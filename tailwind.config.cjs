@@ -1,9 +1,10 @@
 /** @type {import('tailwindcss').Config} */
-export default {
+module.exports = {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
       colors: {
+        border: '#E2E8F0',
         primary: {
           DEFAULT: '#16415C',
           hover: '#1E5C82',
