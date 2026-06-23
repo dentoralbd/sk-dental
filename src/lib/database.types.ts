@@ -86,6 +86,7 @@ export interface Database {
         Row: {
           id: string
           patient_id: string
+          appointment_id: string | null
           tooth_number: number | null
           treatment_type: string
           description: string | null
@@ -97,6 +98,7 @@ export interface Database {
         Insert: {
           id?: string
           patient_id: string
+          appointment_id?: string | null
           tooth_number?: number | null
           treatment_type: string
           description?: string | null
@@ -108,6 +110,7 @@ export interface Database {
         Update: {
           id?: string
           patient_id?: string
+          appointment_id?: string | null
           tooth_number?: number | null
           treatment_type?: string
           description?: string | null
@@ -121,7 +124,9 @@ export interface Database {
         Row: {
           id: string
           patient_id: string
+          appointment_id: string | null
           medications: Json
+          investigations: Json
           diagnosis: string | null
           notes: string | null
           prescribed_date: string
@@ -130,7 +135,9 @@ export interface Database {
         Insert: {
           id?: string
           patient_id: string
+          appointment_id?: string | null
           medications: Json
+          investigations?: Json
           diagnosis?: string | null
           notes?: string | null
           prescribed_date: string
@@ -139,7 +146,9 @@ export interface Database {
         Update: {
           id?: string
           patient_id?: string
+          appointment_id?: string | null
           medications?: Json
+          investigations?: Json
           diagnosis?: string | null
           notes?: string | null
           prescribed_date?: string
@@ -150,6 +159,7 @@ export interface Database {
         Row: {
           id: string
           patient_id: string
+          appointment_id: string | null
           items: Json
           total_amount: number
           paid_amount: number
@@ -160,6 +170,7 @@ export interface Database {
         Insert: {
           id?: string
           patient_id: string
+          appointment_id?: string | null
           items: Json
           total_amount: number
           paid_amount?: number
@@ -170,6 +181,7 @@ export interface Database {
         Update: {
           id?: string
           patient_id?: string
+          appointment_id?: string | null
           items?: Json
           total_amount?: number
           paid_amount?: number
@@ -186,6 +198,7 @@ export interface Database {
           condition: string
           notes: string | null
           created_at: string
+          updated_at: string
         }
         Insert: {
           id?: string
@@ -194,6 +207,7 @@ export interface Database {
           condition: string
           notes?: string | null
           created_at?: string
+          updated_at?: string
         }
         Update: {
           id?: string
@@ -201,6 +215,97 @@ export interface Database {
           tooth_number?: number
           condition?: string
           notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      patient_visits: {
+        Row: {
+          id: string
+          patient_id: string
+          visit_date: string
+          chief_complaint: string | null
+          examination_findings: string | null
+          diagnosis: string | null
+          treatment_plan: string | null
+          notes: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          patient_id: string
+          visit_date?: string
+          chief_complaint?: string | null
+          examination_findings?: string | null
+          diagnosis?: string | null
+          treatment_plan?: string | null
+          notes?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          patient_id?: string
+          visit_date?: string
+          chief_complaint?: string | null
+          examination_findings?: string | null
+          diagnosis?: string | null
+          treatment_plan?: string | null
+          notes?: string | null
+          created_at?: string
+        }
+      }
+      medication_templates: {
+        Row: {
+          id: string
+          name: string
+          dosage: string | null
+          frequency: string | null
+          duration: string | null
+          instructions: string | null
+          usage_count: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          dosage?: string | null
+          frequency?: string | null
+          duration?: string | null
+          instructions?: string | null
+          usage_count?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          dosage?: string | null
+          frequency?: string | null
+          duration?: string | null
+          instructions?: string | null
+          usage_count?: number
+          created_at?: string
+        }
+      }
+      investigation_templates: {
+        Row: {
+          id: string
+          name: string
+          description: string | null
+          usage_count: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string | null
+          usage_count?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string | null
+          usage_count?: number
           created_at?: string
         }
       }
