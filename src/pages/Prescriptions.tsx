@@ -12,8 +12,11 @@ const LOCAL_FAV_INVS_KEY = 'clinicmx_favorite_investigations'
 
 function getLocalItems(key: string): any[] {
   try {
-    return JSON.parse(localStorage.getItem(key) || '[]')
+    const items = JSON.parse(localStorage.getItem(key) || '[]')
+    console.log(`[Memory] Retrieved ${key}: ${items.length} items`)
+    return items
   } catch {
+    console.warn(`[Memory] Error reading ${key}`)
     return []
   }
 }
@@ -24,7 +27,11 @@ function saveLocalItem(key: string, item: any) {
     (i: any) => i.name?.toLowerCase() === item.name?.toLowerCase()
   )
   if (!exists && item.name?.trim()) {
-    localStorage.setItem(key, JSON.stringify([item, ...items].slice(0, 30)))
+    const updated = [item, ...items].slice(0, 30)
+    localStorage.setItem(key, JSON.stringify(updated))
+    console.log(`[Memory] ✅ Saved to ${key}: "${item.name}" (total: ${updated.length})`)
+  } else if (exists) {
+    console.log(`[Memory] ⚠️ Item already exists: "${item.name}"`)
   }
 }
 
@@ -32,16 +39,17 @@ function addToFavorites(key: string, item: any) {
   const favorites = getLocalItems(key)
   const exists = favorites.some((i: any) => i.name?.toLowerCase() === item.name?.toLowerCase())
   if (!exists && item.name?.trim()) {
-    localStorage.setItem(key, JSON.stringify([item, ...favorites].slice(0, 10)))
+    const updated = [item, ...favorites].slice(0, 10)
+    localStorage.setItem(key, JSON.stringify(updated))
+    console.log(`[Memory] ⭐ Added to favorites: "${item.name}"`)
   }
 }
 
 function removeFromFavorites(key: string, itemName: string) {
   const favorites = getLocalItems(key)
-  localStorage.setItem(
-    key,
-    JSON.stringify(favorites.filter((i: any) => i.name?.toLowerCase() !== itemName.toLowerCase()))
-  )
+  const updated = favorites.filter((i: any) => i.name?.toLowerCase() !== itemName.toLowerCase())
+  localStorage.setItem(key, JSON.stringify(updated))
+  console.log(`[Memory] ⭐ Removed from favorites: "${itemName}"`)
 }
 
 function isFavorite(key: string, itemName: string): boolean {
@@ -51,6 +59,7 @@ function isFavorite(key: string, itemName: string): boolean {
 
 function clearHistory(key: string) {
   localStorage.setItem(key, JSON.stringify([]))
+  console.log(`[Memory] 🗑️ Cleared history: ${key}`)
 }
 // ─────────────────────────────────────────────────────
 
@@ -85,13 +94,22 @@ export function Prescriptions() {
   })
 
   useEffect(() => {
+    console.log('[Init] Loading prescriptions, patients, templates, and memory...')
     loadPrescriptions()
     loadPatients()
     loadTemplates()
-    setLocalMeds(getLocalItems(LOCAL_MEDS_KEY))
-    setLocalInvs(getLocalItems(LOCAL_INVS_KEY))
-    setFavMeds(getLocalItems(LOCAL_FAV_MEDS_KEY))
-    setFavInvs(getLocalItems(LOCAL_FAV_INVS_KEY))
+    
+    const meds = getLocalItems(LOCAL_MEDS_KEY)
+    const invs = getLocalItems(LOCAL_INVS_KEY)
+    const favMeds = getLocalItems(LOCAL_FAV_MEDS_KEY)
+    const favInvs = getLocalItems(LOCAL_FAV_INVS_KEY)
+    
+    setLocalMeds(meds)
+    setLocalInvs(invs)
+    setFavMeds(favMeds)
+    setFavInvs(favInvs)
+    
+    console.log(`[Init] ✅ Loaded: ${meds.length} meds, ${invs.length} invs, ${favMeds.length} fav meds, ${favInvs.length} fav invs`)
   }, [])
 
   async function loadPrescriptions() {
@@ -135,6 +153,7 @@ export function Prescriptions() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     try {
+      console.log('[Submit] Creating prescription...')
       await supabase.from('prescriptions').insert([
         {
           patient_id: formData.patient_id,
@@ -199,10 +218,19 @@ export function Prescriptions() {
       resetForm()
       loadPrescriptions()
       loadTemplates()
-      setLocalMeds(getLocalItems(LOCAL_MEDS_KEY))
-      setLocalInvs(getLocalItems(LOCAL_INVS_KEY))
-      setFavMeds(getLocalItems(LOCAL_FAV_MEDS_KEY))
-      setFavInvs(getLocalItems(LOCAL_FAV_INVS_KEY))
+      
+      // RELOAD MEMORY
+      const updatedMeds = getLocalItems(LOCAL_MEDS_KEY)
+      const updatedInvs = getLocalItems(LOCAL_INVS_KEY)
+      const updatedFavMeds = getLocalItems(LOCAL_FAV_MEDS_KEY)
+      const updatedFavInvs = getLocalItems(LOCAL_FAV_INVS_KEY)
+      
+      setLocalMeds(updatedMeds)
+      setLocalInvs(updatedInvs)
+      setFavMeds(updatedFavMeds)
+      setFavInvs(updatedFavInvs)
+      
+      console.log('[Submit] ✅ Complete! Memory updated:', { updatedMeds: updatedMeds.length, updatedInvs: updatedInvs.length })
     } catch (error) {
       console.error('Error creating prescription:', error)
       alert('Failed to create prescription')
@@ -302,6 +330,7 @@ export function Prescriptions() {
       newMeds.push(item)
     }
     setFormData({ ...formData, medications: newMeds })
+    console.log(`[Memory] Applied medication: "${item.name}"`)
   }
 
   function applyLocalInvestigation(inv: any) {
@@ -317,6 +346,7 @@ export function Prescriptions() {
       newInvs.push(item)
     }
     setFormData({ ...formData, investigations: newInvs })
+    console.log(`[Memory] Applied investigation: "${item.name}"`)
   }
 
   function toggleFavMedication(med: any) {
@@ -360,7 +390,10 @@ export function Prescriptions() {
           <h1 className="text-2xl font-bold">Prescriptions</h1>
           <p className="text-text-secondary">Manage patient prescriptions and investigations</p>
         </div>
-        <Button onClick={() => setShowForm(true)}>
+        <Button onClick={() => {
+          console.log('[UI] Opening prescription form')
+          setShowForm(true)
+        }}>
           <Plus className="w-4 h-4 mr-2" />
           New Prescription
         </Button>
@@ -427,9 +460,10 @@ export function Prescriptions() {
           <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full my-8">
             <div className="p-6 border-b border-gray-200">
               <h2 className="text-xl font-bold">New Prescription</h2>
+              <p className="text-xs text-gray-500 mt-1">💾 Items you use will be saved for quick access next time</p>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-6">
+            <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[calc(100vh-200px)] overflow-y-auto">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Patient *</label>
@@ -608,7 +642,7 @@ export function Prescriptions() {
                   <div className="mb-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
                     <div className="flex items-center gap-2 mb-2">
                       <Star className="w-4 h-4 text-yellow-600" />
-                      <h4 className="font-semibold text-sm text-gray-900">Favorite Medications</h4>
+                      <h4 className="font-semibold text-sm text-gray-900">⭐ Favorite Medications ({favMeds.length})</h4>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {favMeds.map((med, idx) => (
@@ -632,12 +666,12 @@ export function Prescriptions() {
                     <button
                       type="button"
                       onClick={() => setExpandMedHistory(!expandMedHistory)}
-                      className="w-full flex items-center justify-between text-left"
+                      className="w-full flex items-center justify-between text-left hover:opacity-80"
                     >
                       <div className="flex items-center gap-2">
                         <Clock className="w-4 h-4 text-blue-600" />
                         <h4 className="font-semibold text-sm text-gray-900">
-                          Recent Medications ({localMeds.length})
+                          🕐 Recent Medications ({localMeds.length})
                         </h4>
                       </div>
                       <ChevronDown
@@ -663,14 +697,11 @@ export function Prescriptions() {
                           {filteredMeds.map((med, idx) => (
                             <div
                               key={idx}
-                              className="p-2 bg-white rounded-lg border border-gray-200 hover:border-primary hover:shadow-sm transition-all group"
+                              className="p-2 bg-white rounded-lg border border-gray-200 hover:border-primary hover:shadow-sm transition-all group cursor-pointer"
+                              onClick={() => applyLocalMedication(med)}
                             >
                               <div className="flex items-start justify-between gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => applyLocalMedication(med)}
-                                  className="text-left flex-1 min-w-0"
-                                >
+                                <div className="text-left flex-1 min-w-0">
                                   <div className="font-medium text-sm text-gray-900 truncate">
                                     {med.name}
                                   </div>
@@ -679,11 +710,14 @@ export function Prescriptions() {
                                       .filter(Boolean)
                                       .join(' • ')}
                                   </div>
-                                </button>
+                                </div>
                                 <button
                                   type="button"
-                                  onClick={() => toggleFavMedication(med)}
-                                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    toggleFavMedication(med)
+                                  }}
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
                                   title={isFavorite(LOCAL_FAV_MEDS_KEY, med.name) ? 'Remove favorite' : 'Add to favorites'}
                                 >
                                   <Star
@@ -701,7 +735,7 @@ export function Prescriptions() {
 
                         {filteredMeds.length === 0 && (
                           <div className="text-center py-4 text-sm text-gray-600">
-                            No medications matching your search
+                            {medSearchFilter ? 'No medications matching your search' : 'No recent medications'}
                           </div>
                         )}
 
@@ -717,7 +751,7 @@ export function Prescriptions() {
                           }}
                           className="mt-3 w-full text-xs text-red-600 hover:text-red-700 font-medium py-1"
                         >
-                          Clear History
+                          🗑️ Clear History
                         </button>
                       </>
                     )}
@@ -830,7 +864,7 @@ export function Prescriptions() {
                   <div className="mb-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
                     <div className="flex items-center gap-2 mb-2">
                       <Star className="w-4 h-4 text-yellow-600" />
-                      <h4 className="font-semibold text-sm text-gray-900">Favorite Investigations</h4>
+                      <h4 className="font-semibold text-sm text-gray-900">⭐ Favorite Investigations ({favInvs.length})</h4>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {favInvs.map((inv, idx) => (
@@ -854,12 +888,12 @@ export function Prescriptions() {
                     <button
                       type="button"
                       onClick={() => setExpandInvHistory(!expandInvHistory)}
-                      className="w-full flex items-center justify-between text-left"
+                      className="w-full flex items-center justify-between text-left hover:opacity-80"
                     >
                       <div className="flex items-center gap-2">
                         <Clock className="w-4 h-4 text-green-600" />
                         <h4 className="font-semibold text-sm text-gray-900">
-                          Recent Investigations ({localInvs.length})
+                          🕐 Recent Investigations ({localInvs.length})
                         </h4>
                       </div>
                       <ChevronDown
@@ -885,14 +919,11 @@ export function Prescriptions() {
                           {filteredInvs.map((inv, idx) => (
                             <div
                               key={idx}
-                              className="p-2 bg-white rounded-lg border border-gray-200 hover:border-primary hover:shadow-sm transition-all group"
+                              className="p-2 bg-white rounded-lg border border-gray-200 hover:border-primary hover:shadow-sm transition-all group cursor-pointer"
+                              onClick={() => applyLocalInvestigation(inv)}
                             >
                               <div className="flex items-start justify-between gap-2">
-                                <button
-                                  type="button"
-                                  onClick={() => applyLocalInvestigation(inv)}
-                                  className="text-left flex-1 min-w-0"
-                                >
+                                <div className="text-left flex-1 min-w-0">
                                   <div className="font-medium text-sm text-gray-900 truncate">
                                     {inv.name}
                                   </div>
@@ -901,11 +932,14 @@ export function Prescriptions() {
                                       {inv.description}
                                     </div>
                                   )}
-                                </button>
+                                </div>
                                 <button
                                   type="button"
-                                  onClick={() => toggleFavInvestigation(inv)}
-                                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    toggleFavInvestigation(inv)
+                                  }}
+                                  className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
                                   title={isFavorite(LOCAL_FAV_INVS_KEY, inv.name) ? 'Remove favorite' : 'Add to favorites'}
                                 >
                                   <Star
@@ -923,7 +957,7 @@ export function Prescriptions() {
 
                         {filteredInvs.length === 0 && (
                           <div className="text-center py-4 text-sm text-gray-600">
-                            No investigations matching your search
+                            {invSearchFilter ? 'No investigations matching your search' : 'No recent investigations'}
                           </div>
                         )}
 
@@ -939,7 +973,7 @@ export function Prescriptions() {
                           }}
                           className="mt-3 w-full text-xs text-red-600 hover:text-red-700 font-medium py-1"
                         >
-                          Clear History
+                          🗑️ Clear History
                         </button>
                       </>
                     )}
@@ -958,14 +992,15 @@ export function Prescriptions() {
                 />
               </div>
 
-              <div className="flex gap-3 pt-4 border-t">
+              <div className="flex gap-3 pt-4 border-t sticky bottom-0 bg-white">
                 <Button type="submit" className="flex-1">
-                  Create Prescription
+                  Save Prescription
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => {
+                    console.log('[UI] Closing prescription form')
                     setShowForm(false)
                     resetForm()
                   }}
