@@ -10,6 +10,10 @@ interface Stats {
   monthRevenue: number
 }
 
+interface Invoice {
+  total_amount: number
+}
+
 export function Dashboard() {
   const [stats, setStats] = useState<Stats>({
     totalPatients: 0,
@@ -31,12 +35,10 @@ export function Dashboard() {
       const today = format(new Date(), 'yyyy-MM-dd')
       const monthStart = format(new Date(new Date().getFullYear(), new Date().getMonth(), 1), 'yyyy-MM-dd')
 
-      // Get total patients
       const { count: patientsCount } = await supabase
         .from('patients')
         .select('*', { count: 'exact', head: true })
 
-      // Get today's appointments
       const { data: appointments } = await supabase
         .from('appointments')
         .select(`
@@ -48,22 +50,19 @@ export function Dashboard() {
         .order('date_time')
         .limit(5)
 
-      // Get pending invoices count
       const { count: pendingCount } = await supabase
         .from('invoices')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'Pending')
 
-      // Get month revenue
       const { data: invoices } = await supabase
         .from('invoices')
         .select('total_amount')
         .gte('created_at', monthStart)
         .eq('status', 'Paid')
 
-      const revenue = invoices?.reduce((sum, inv) => sum + (inv.total_amount || 0), 0) || 0
+      const revenue = (invoices as Invoice[] || []).reduce((sum, inv) => sum + (inv.total_amount || 0), 0)
 
-      // Get recent patients
       const { data: patients } = await supabase
         .from('patients')
         .select('*')
