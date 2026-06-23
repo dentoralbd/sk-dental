@@ -188,19 +188,17 @@ function PatientModal({ patient, onClose, onSave }: { patient: Patient | null; o
       if (patient) {
         const { error } = await supabase
           .from('patients')
-          .update([
-            {
-              first_name: formData.first_name,
-              last_name: formData.last_name,
-              phone: formData.phone,
-              email: formData.email,
-              date_of_birth: formData.date_of_birth,
-              gender: formData.gender,
-              address: formData.address,
-              medical_history: formData.medical_history,
-              notes: formData.notes,
-            }
-          ])
+          .update({
+            first_name: formData.first_name,
+            last_name: formData.last_name,
+            phone: formData.phone,
+            email: formData.email,
+            date_of_birth: formData.date_of_birth,
+            gender: formData.gender,
+            address: formData.address,
+            medical_history: formData.medical_history,
+            notes: formData.notes,
+          })
           .eq('id', patient.id)
 
         if (error) throw error
