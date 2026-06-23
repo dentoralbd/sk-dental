@@ -1,7 +1,73 @@
-import { Plus } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Plus, Search, Edit2, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { supabase } from '@/lib/supabase'
+
+interface Patient {
+  id: string
+  first_name: string
+  last_name: string
+  phone: string | null
+  email: string | null
+  date_of_birth: string | null
+  gender: string | null
+  address: string | null
+  medical_history: string | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
 
 export function Patients() {
+  const [patients, setPatients] = useState<Patient[]>([])
+  const [loading, setLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [showModal, setShowModal] = useState(false)
+  const [editingPatient, setEditingPatient] = useState<Patient | null>(null)
+
+  useEffect(() => {
+    loadPatients()
+  }, [])
+
+  async function loadPatients() {
+    try {
+      setLoading(true)
+      const { data, error } = await supabase
+        .from('patients')
+        .select('*')
+        .order('last_name', { ascending: true })
+
+      if (error) throw error
+      setPatients(data || [])
+    } catch (error) {
+      console.error('Error loading patients:', error)
+      alert('Failed to load patients')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function deletePatient(id: string) {
+    if (!confirm('Are you sure you want to delete this patient?')) return
+
+    try {
+      const { error } = await supabase.from('patients').delete().eq('id', id)
+      if (error) throw error
+      setPatients(patients.filter((p) => p.id !== id))
+    } catch (error) {
+      console.error('Error deleting patient:', error)
+      alert('Failed to delete patient')
+    }
+  }
+
+  const filteredPatients = patients.filter(
+    (p) =>
+      p.first_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.last_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.phone?.includes(searchQuery) ||
+      p.email?.toLowerCase().includes(searchQuery.toLowerCase())
+  )
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -9,7 +75,7 @@ export function Patients() {
           <h1 className="text-2xl font-bold">Patients</h1>
           <p className="text-text-secondary mt-1">Manage your patient records</p>
         </div>
-        <Button>
+        <Button onClick={() => { setEditingPatient(null); setShowModal(true) }}>
           <Plus className="w-4 h-4 mr-2" />
           Add Patient
         </Button>
@@ -17,39 +83,236 @@ export function Patients() {
 
       <div className="bg-card rounded-lg shadow-sm border border-gray-200">
         <div className="p-4 border-b border-gray-200">
-          <input
-            type="text"
-            placeholder="Search patients..."
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-          />
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-text-secondary" />
+            <input
+              type="text"
+              placeholder="Search patients by name, phone, or email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
         </div>
-        <div className="divide-y divide-gray-200">
-          <PatientRow name="John Doe" phone="+1 234 567 8900" email="john@example.com" />
-          <PatientRow name="Jane Smith" phone="+1 234 567 8901" email="jane@example.com" />
-          <PatientRow name="Mike Johnson" phone="+1 234 567 8902" email="mike@example.com" />
+
+        {loading ? (
+          <div className="p-8 text-center text-text-secondary">Loading patients...</div>
+        ) : filteredPatients.length === 0 ? (
+          <div className="p-8 text-center text-text-secondary">
+            {searchQuery ? 'No patients found matching your search' : 'No patients yet. Click "Add Patient" to get started.'}
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-200">
+            {filteredPatients.map((patient) => (
+              <PatientRow
+                key={patient.id}
+                patient={patient}
+                onEdit={() => { setEditingPatient(patient); setShowModal(true) }}
+                onDelete={() => deletePatient(patient.id)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {showModal && (
+        <PatientModal
+          patient={editingPatient}
+          onClose={() => { setShowModal(false); setEditingPatient(null) }}
+          onSave={() => { loadPatients(); setShowModal(false); setEditingPatient(null) }}
+        />
+      )}
+    </div>
+  )
+}
+
+function PatientRow({ patient, onEdit, onDelete }: { patient: Patient; onEdit: () => void; onDelete: () => void }) {
+  return (
+    <div className="p-4 hover:bg-gray-50 transition-colors">
+      <div className="flex items-center gap-4">
+        <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center text-white font-semibold text-lg">
+          {patient.first_name[0]}{patient.last_name[0]}
+        </div>
+        <div className="flex-1">
+          <p className="font-medium">{patient.first_name} {patient.last_name}</p>
+          <div className="flex gap-4 mt-1">
+            {patient.phone && <span className="text-sm text-text-secondary">{patient.phone}</span>}
+            {patient.email && <span className="text-sm text-text-secondary">{patient.email}</span>}
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={onEdit}>
+            <Edit2 className="w-4 h-4 mr-1" />
+            Edit
+          </Button>
+          <Button variant="outline" size="sm" onClick={onDelete}>
+            <Trash2 className="w-4 h-4" />
+          </Button>
         </div>
       </div>
     </div>
   )
 }
 
-function PatientRow({ name, phone, email }: any) {
+function PatientModal({ patient, onClose, onSave }: { patient: Patient | null; onClose: () => void; onSave: () => void }) {
+  const [formData, setFormData] = useState({
+    first_name: patient?.first_name || '',
+    last_name: patient?.last_name || '',
+    phone: patient?.phone || '',
+    email: patient?.email || '',
+    date_of_birth: patient?.date_of_birth || '',
+    gender: patient?.gender || '',
+    address: patient?.address || '',
+    medical_history: patient?.medical_history || '',
+    notes: patient?.notes || '',
+  })
+  const [saving, setSaving] = useState(false)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+
+    try {
+      if (patient) {
+        // Update existing patient
+        const { error } = await supabase
+          .from('patients')
+          .update(formData)
+          .eq('id', patient.id)
+        if (error) throw error
+      } else {
+        // Create new patient
+        const { error } = await supabase.from('patients').insert([formData])
+        if (error) throw error
+      }
+      onSave()
+    } catch (error) {
+      console.error('Error saving patient:', error)
+      alert('Failed to save patient')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
-    <div className="p-4 hover:bg-gray-50 cursor-pointer transition-colors">
-      <div className="flex items-center gap-4">
-        <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center text-white font-semibold text-lg">
-          {name[0]}
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+          <h2 className="text-xl font-bold">{patient ? 'Edit Patient' : 'Add New Patient'}</h2>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
+            <X className="w-5 h-5" />
+          </button>
         </div>
-        <div className="flex-1">
-          <p className="font-medium">{name}</p>
-          <div className="flex gap-4 mt-1">
-            <span className="text-sm text-text-secondary">{phone}</span>
-            <span className="text-sm text-text-secondary">{email}</span>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">First Name *</label>
+              <input
+                type="text"
+                required
+                value={formData.first_name}
+                onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Last Name *</label>
+              <input
+                type="text"
+                required
+                value={formData.last_name}
+                onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
           </div>
-        </div>
-        <Button variant="outline" size="sm">
-          View Details
-        </Button>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Phone</label>
+              <input
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Email</label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Date of Birth</label>
+              <input
+                type="date"
+                value={formData.date_of_birth}
+                onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Gender</label>
+              <select
+                value={formData.gender}
+                onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="">Select...</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Address</label>
+            <input
+              type="text"
+              value={formData.address}
+              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Medical History</label>
+            <textarea
+              rows={3}
+              value={formData.medical_history}
+              onChange={(e) => setFormData({ ...formData, medical_history: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Notes</label>
+            <textarea
+              rows={2}
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <Button type="submit" disabled={saving} className="flex-1">
+              {saving ? 'Saving...' : patient ? 'Update Patient' : 'Add Patient'}
+            </Button>
+            <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+              Cancel
+            </Button>
+          </div>
+        </form>
       </div>
     </div>
   )
