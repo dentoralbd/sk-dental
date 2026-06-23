@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Calendar as CalendarIcon } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { supabase } from '@/lib/supabase'
 import { format, addDays, startOfWeek } from 'date-fns'
@@ -241,14 +241,16 @@ function AppointmentModal({ selectedDate, onClose, onSave }: any) {
     setSaving(true)
 
     try {
-      const { error } = await supabase.from('appointments').insert({
-        patient_id: formData.patient_id,
-        date_time: `${formData.date}T${formData.time}:00`,
-        duration: parseInt(formData.duration),
-        type: formData.type,
-        status: formData.status,
-        notes: formData.notes || null,
-      })
+      const { error } = await supabase.from('appointments').insert([
+        {
+          patient_id: formData.patient_id,
+          date_time: `${formData.date}T${formData.time}:00`,
+          duration: parseInt(formData.duration),
+          type: formData.type,
+          status: formData.status,
+          notes: formData.notes || null,
+        }
+      ])
 
       if (error) throw error
       onSave()
