@@ -295,14 +295,14 @@ function InvoiceModal({ onClose, onSave }: { onClose: () => void; onSave: () => 
     setSaving(true)
 
     try {
-      const { error } = await supabase.from('invoices').insert({
+      const { error } = await supabase.from('invoices').insert([{
         patient_id: formData.patient_id,
         items: items.filter(i => i.description && i.amount),
         total_amount: totalAmount,
         paid_amount: 0,
         status: formData.status,
         due_date: formData.due_date || null,
-      })
+      }])
 
       if (error) throw error
       onSave()
