@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
-import { Plus, Search, FileText, Trash2, Lightbulb, X } from 'lucide-react'
+import { Plus, Search, Trash2, Lightbulb, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { supabase } from '@/lib/supabase'
 import { format } from 'date-fns'
 
-// ─── LOCAL MEMORY HELPERS (NEW) ─────────────────────────────
+// ─── LOCAL MEMORY HELPERS ─────────────────────────────
 const LOCAL_MEDS_KEY = 'clinicmx_local_medications'
 const LOCAL_INVS_KEY = 'clinicmx_local_investigations'
 
@@ -25,18 +25,12 @@ function saveLocalItem(key: string, item: any) {
     localStorage.setItem(key, JSON.stringify([item, ...items].slice(0, 30)))
   }
 }
-
-function removeLocalItem(key: string, name: string) {
-  const items = getLocalItems(key).filter(
-    (i: any) => i.name?.toLowerCase() !== name.toLowerCase()
-  )
-  localStorage.setItem(key, JSON.stringify(items))
-}
-// ─────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────
 
 export function Prescriptions() {
   const [prescriptions, setPrescriptions] = useState<any[]>([])
   const [patients, setPatients] = useState<any[]>([])
   const [medicationTemplates, setMedicationTemplates] = useState<any[]>([])
   const [investigationTemplates, setInvestigationTemplates] = useState<any[]>([])
-  const [loading, setLoading] = use
+  const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useSta
