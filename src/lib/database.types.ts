@@ -12,6 +12,7 @@ export interface Database {
       patients: {
         Row: {
           id: string
+          patient_code: string | null
           first_name: string
           last_name: string
           phone: string
@@ -25,6 +26,7 @@ export interface Database {
         }
         Insert: {
           id?: string
+          patient_code?: string | null
           first_name: string
           last_name: string
           phone: string
@@ -38,6 +40,7 @@ export interface Database {
         }
         Update: {
           id?: string
+          patient_code?: string | null
           first_name?: string
           last_name?: string
           phone?: string

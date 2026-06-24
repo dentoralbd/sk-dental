@@ -149,6 +149,7 @@ export function Patients() {
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase">ID</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase">Name</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase">Contact</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase">DOB</th>
@@ -159,6 +160,9 @@ export function Patients() {
               <tbody className="divide-y divide-gray-200">
                 {filteredPatients.map((patient) => (
                   <tr key={patient.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {patient.patient_code || '-'}
+                    </td>
                     <td className="px-6 py-4">
                       <div className="font-medium">
                         {patient.first_name} {patient.last_name}

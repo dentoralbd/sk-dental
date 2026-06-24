@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Plus, Calendar as CalendarIcon, FileText, Activity, DollarSign, Pill, Trash2, Edit, Upload, Image, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { AppointmentModal } from '@/components/AppointmentModal'
 import { supabase } from '@/lib/supabase'
 import { format } from 'date-fns'
 
@@ -18,6 +19,7 @@ export function PatientProfile() {
   const [files, setFiles] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<'overview' | 'visits' | 'dental-chart' | 'treatments' | 'prescriptions' | 'appointments' | 'billing' | 'files'>('overview')
+  const [showAppointmentForm, setShowAppointmentForm] = useState(false)
   const [selectedTooth, setSelectedTooth] = useState<number | null>(null)
   const [showVisitForm, setShowVisitForm] = useState(false)
   const [showPrescriptionForm, setShowPrescriptionForm] = useState(false)
@@ -286,9 +288,16 @@ export function PatientProfile() {
           Back
         </Button>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold">
-            {patient.first_name} {patient.last_name}
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold">
+              {patient.first_name} {patient.last_name}
+            </h1>
+            {patient.patient_code && (
+              <span className="px-2 py-1 bg-gray-100 text-gray-700 text-sm font-medium rounded">
+                {patient.patient_code}
+              </span>
+            )}
+          </div>
           <p className="text-text-secondary">{patient.email} • {patient.phone}</p>
         </div>
       </div>
@@ -547,8 +556,12 @@ export function PatientProfile() {
 
       {activeTab === 'appointments' && (
         <div className="bg-card rounded-lg shadow-sm border border-gray-200">
-          <div className="p-4 border-b border-gray-200">
+          <div className="p-4 border-b border-gray-200 flex items-center justify-between">
             <h3 className="font-semibold">Appointment History</h3>
+            <Button onClick={() => setShowAppointmentForm(true)} size="sm">
+              <Plus className="w-4 h-4 mr-2" />
+              New Appointment
+            </Button>
           </div>
           {appointments.length === 0 ? (
             <div className="p-8 text-center text-text-secondary">No appointments recorded</div>
@@ -786,6 +799,18 @@ export function PatientProfile() {
           setFormData={setPrescriptionForm}
           onSubmit={handlePrescriptionSubmit}
           onClose={() => setShowPrescriptionForm(false)}
+        />
+      )}
+
+      {showAppointmentForm && (
+        <AppointmentModal
+          selectedDate={new Date()}
+          defaultPatientId={id}
+          onClose={() => setShowAppointmentForm(false)}
+          onSave={() => {
+            loadPatientData()
+            setShowAppointmentForm(false)
+          }}
         />
       )}
     </div>
