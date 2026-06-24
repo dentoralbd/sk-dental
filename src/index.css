@@ -41,14 +41,6 @@
   }
 }
 
-<<<<<<< HEAD
-/* ─── UI Animations ──────────────────────────────── */
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-=======
 /* ── Spinner ── */
 @keyframes spin-smooth {
   to { transform: rotate(360deg); }
@@ -81,38 +73,10 @@
 }
 
 /* ── Fade-in for page content ── */
->>>>>>> origin/main
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-<<<<<<< HEAD
-
-@keyframes shimmer {
-  0%   { background-position: -200% 0; }
-  100% { background-position:  200% 0; }
-}
-
-.spinner {
-  display: inline-block;
-  width: 1.25rem;
-  height: 1.25rem;
-  border: 2px solid currentColor;
-  border-top-color: transparent;
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-}
-
-.page-fade-in {
-  animation: fade-in 0.3s ease both;
-}
-
-.skeleton {
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.4s infinite;
-  border-radius: 0.375rem;
-=======
 .page-fade-in {
   animation: fade-in 0.25s ease-out;
 }
@@ -126,5 +90,4 @@
   background: #e2e8f0;
   border-radius: 0.375rem;
   animation: skeleton-pulse 1.4s ease-in-out infinite;
->>>>>>> origin/main
 }

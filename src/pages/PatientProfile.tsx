@@ -1,10 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-<<<<<<< HEAD
-import { ArrowLeft, Plus, Calendar as CalendarIcon, FileText, Activity, DollarSign, Pill, Trash2, Edit, Lightbulb, X, Pencil } from 'lucide-react'
-=======
-import { ArrowLeft, Plus, Calendar as CalendarIcon, FileText, Activity, DollarSign, Pill, Trash2, Edit, Upload, Image, X } from 'lucide-react'
->>>>>>> origin/main
+import { ArrowLeft, Plus, Calendar as CalendarIcon, FileText, Activity, DollarSign, Pill, Trash2, Edit, Lightbulb, X, Pencil, Upload, Image } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { AppointmentModal } from '@/components/AppointmentModal'
 import { supabase } from '@/lib/supabase'
@@ -50,7 +46,6 @@ export function PatientProfile() {
   const [selectedTooth, setSelectedTooth] = useState<number | null>(null)
   const [showVisitForm, setShowVisitForm] = useState(false)
   const [showPrescriptionForm, setShowPrescriptionForm] = useState(false)
-<<<<<<< HEAD
   const [editingPrescriptionId, setEditingPrescriptionId] = useState<string | null>(null)
   const [medicationTemplates, setMedicationTemplates] = useState<any[]>([])
   const [investigationTemplates, setInvestigationTemplates] = useState<any[]>([])
@@ -58,12 +53,10 @@ export function PatientProfile() {
   const [localInvs, setLocalInvs] = useState<any[]>([])
   const [showMedTemplates, setShowMedTemplates] = useState(false)
   const [showInvTemplates, setShowInvTemplates] = useState(false)
-=======
   const [uploadingFile, setUploadingFile] = useState(false)
   const [fileCategory, setFileCategory] = useState<'profile_photo' | 'clinical_image' | 'xray_image'>('clinical_image')
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
->>>>>>> origin/main
 
   const [visitForm, setVisitForm] = useState({
     chief_complaint: '',
@@ -271,7 +264,6 @@ export function PatientProfile() {
     }
   }
 
-<<<<<<< HEAD
   function startEditPrescription(prescription: any) {
     setEditingPrescriptionId(prescription.id)
     setPrescriptionForm({
@@ -300,7 +292,6 @@ export function PatientProfile() {
     }
   }
 
-=======
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file || !id) return
@@ -355,7 +346,6 @@ export function PatientProfile() {
     return data.publicUrl
   }
 
->>>>>>> origin/main
   const getToothCondition = (toothNumber: number) => {
     const record = dentalRecords.find(r => r.tooth_number === toothNumber)
     return record?.condition || 'Healthy'
