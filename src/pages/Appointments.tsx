@@ -270,5 +270,7 @@ function AppointmentRow({ appointment, onCancel, onStatusChange }: {
   )
 }
 
-
+function formatLocalAppointmentDateTime(dateTime: string) {
+  return format(new Date(dateTime), 'h:mm a')
+}
 
