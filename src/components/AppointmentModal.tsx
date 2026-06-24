@@ -18,7 +18,7 @@ export function AppointmentModal({
   const [patientMode, setPatientMode] = useState<'existing' | 'new'>(defaultPatientId ? 'existing' : 'existing')
   const [patients, setPatients] = useState<any[]>([])
   const [formData, setFormData] = useState({
-    patient_id: defaultPatientId,
+    patient_id: defaultPatientId || '',
     date: format(selectedDate, 'yyyy-MM-dd'),
     time: '09:00',
     duration: '30',
