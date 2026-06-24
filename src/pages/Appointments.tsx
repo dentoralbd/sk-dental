@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus, CheckCircle, XCircle, ClipboardCheck, Calendar } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { supabase } from '@/lib/supabase'
-import { format, addDays, startOfWeek } from 'date-fns'
+import { format, addDays, startOfWeek, isSameDay } from 'date-fns'
 import { AppointmentModal } from '@/components/AppointmentModal'
 
 interface Appointment {
@@ -22,13 +22,33 @@ interface Appointment {
 
 export function Appointments() {
   const [appointments, setAppointments] = useState<Appointment[]>([])
+  const [weekAppointments, setWeekAppointments] = useState<Appointment[]>([])
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
 
+  const weekStart = startOfWeek(selectedDate, { weekStartsOn: 0 })
+  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
+
   useEffect(() => {
     loadAppointments()
+    loadWeekAppointments()
   }, [selectedDate])
+
+  async function loadWeekAppointments() {
+    try {
+      const weekEnd = addDays(weekStart, 6)
+      weekEnd.setHours(23, 59, 59, 999)
+      const { data } = await supabase
+        .from('appointments')
+        .select('date_time, status')
+        .gte('date_time', weekStart.toISOString())
+        .lte('date_time', weekEnd.toISOString())
+      setWeekAppointments((data as any) || [])
+    } catch {
+      // ignore
+    }
+  }
 
   async function loadAppointments() {
     try {
@@ -59,28 +79,35 @@ export function Appointments() {
     }
   }
 
-  async function cancelAppointment(id: string) {
-    if (!confirm('Cancel this appointment?')) return
-
+  async function updateStatus(id: string, newStatus: string) {
     try {
       const { error } = await supabase
         .from('appointments')
-        .update({ status: 'Cancelled' })
+        .update({ status: newStatus })
         .eq('id', id)
-
       if (error) throw error
-      loadAppointments()
+      setAppointments(prev =>
+        prev.map(a => a.id === id ? { ...a, status: newStatus } : a)
+      )
     } catch (error) {
-      console.error('Error cancelling appointment:', error)
-      alert('Failed to cancel appointment')
+      console.error('Error updating appointment status:', error)
+      alert('Failed to update appointment')
     }
   }
 
-  const weekStart = startOfWeek(selectedDate, { weekStartsOn: 0 })
-  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
+  async function cancelAppointment(id: string) {
+    if (!confirm('Cancel this appointment?')) return
+    updateStatus(id, 'Cancelled')
+  }
+
+  function getDotsForDay(day: Date) {
+    return weekAppointments.filter(a =>
+      isSameDay(new Date(a.date_time), day) && a.status !== 'Cancelled'
+    ).length
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 page-fade-in">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Appointments</h1>
@@ -124,13 +151,14 @@ export function Appointments() {
           {weekDays.map((day) => {
             const isSelected = format(day, 'yyyy-MM-dd') === format(selectedDate, 'yyyy-MM-dd')
             const isToday = format(day, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')
+            const dotCount = getDotsForDay(day)
             return (
               <button
                 key={day.toISOString()}
                 onClick={() => setSelectedDate(day)}
-                className={`p-3 rounded-lg text-center transition-colors ${
+                className={`p-3 rounded-lg text-center transition-all duration-150 hover:scale-105 active:scale-95 ${
                   isSelected
-                    ? 'bg-primary text-white'
+                    ? 'bg-primary text-white shadow-md'
                     : isToday
                     ? 'bg-blue-50 text-primary border border-primary'
                     : 'hover:bg-gray-100'
@@ -138,6 +166,14 @@ export function Appointments() {
               >
                 <div className="text-xs font-medium">{format(day, 'EEE')}</div>
                 <div className="text-lg font-bold mt-1">{format(day, 'd')}</div>
+                <div className="mt-1 flex justify-center gap-0.5 h-2">
+                  {dotCount > 0 && [...Array(Math.min(dotCount, 3))].map((_, i) => (
+                    <span
+                      key={i}
+                      className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white/70' : 'bg-primary'}`}
+                    />
+                  ))}
+                </div>
               </button>
             )
           })}
@@ -152,9 +188,12 @@ export function Appointments() {
         </div>
 
         {loading ? (
-          <div className="p-8 text-center text-text-secondary">Loading appointments...</div>
+          <div className="p-8 flex justify-center">
+            <span className="spinner" />
+          </div>
         ) : appointments.length === 0 ? (
           <div className="p-8 text-center text-text-secondary">
+            <Calendar className="w-10 h-10 text-gray-300 mx-auto mb-2" />
             No appointments for this day
           </div>
         ) : (
@@ -164,6 +203,7 @@ export function Appointments() {
                 key={appointment.id}
                 appointment={appointment}
                 onCancel={() => cancelAppointment(appointment.id)}
+                onStatusChange={(status) => updateStatus(appointment.id, status)}
               />
             ))}
           </div>
@@ -174,14 +214,18 @@ export function Appointments() {
         <AppointmentModal
           selectedDate={selectedDate}
           onClose={() => setShowModal(false)}
-          onSave={() => { loadAppointments(); setShowModal(false) }}
+          onSave={() => { loadAppointments(); loadWeekAppointments(); setShowModal(false) }}
         />
       )}
     </div>
   )
 }
 
-function AppointmentRow({ appointment, onCancel }: { appointment: Appointment; onCancel: () => void }) {
+function AppointmentRow({ appointment, onCancel, onStatusChange }: {
+  appointment: Appointment
+  onCancel: () => void
+  onStatusChange: (status: string) => void
+}) {
   const statusColors: Record<string, string> = {
     Scheduled: 'bg-blue-100 text-blue-700',
     Confirmed: 'bg-green-100 text-green-700',
@@ -189,11 +233,13 @@ function AppointmentRow({ appointment, onCancel }: { appointment: Appointment; o
     Cancelled: 'bg-red-100 text-red-700',
   }
 
+  const isClosed = appointment.status === 'Cancelled' || appointment.status === 'Completed'
+
   return (
     <div className="p-4 hover:bg-gray-50 transition-colors">
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between gap-3">
         <div className="flex-1">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <p className="font-medium">
               {appointment.patients.first_name} {appointment.patients.last_name}
             </p>
@@ -208,13 +254,42 @@ function AppointmentRow({ appointment, onCancel }: { appointment: Appointment; o
             <p className="text-sm text-text-secondary mt-1">{appointment.notes}</p>
           )}
         </div>
-        {appointment.status !== 'Cancelled' && appointment.status !== 'Completed' && (
-          <Button variant="outline" size="sm" onClick={onCancel}>
-            Cancel
-          </Button>
+
+        {!isClosed && (
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {appointment.status === 'Scheduled' && (
+              <button
+                onClick={() => onStatusChange('Confirmed')}
+                className="flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
+                title="Confirm"
+              >
+                <CheckCircle className="w-3.5 h-3.5" />
+                Confirm
+              </button>
+            )}
+            {appointment.status === 'Confirmed' && (
+              <button
+                onClick={() => onStatusChange('Completed')}
+                className="flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                title="Mark Completed"
+              >
+                <ClipboardCheck className="w-3.5 h-3.5" />
+                Done
+              </button>
+            )}
+            <button
+              onClick={onCancel}
+              className="flex items-center gap-1 px-2 py-1.5 text-xs font-medium text-red-700 bg-red-50 hover:bg-red-100 rounded-lg transition-colors"
+              title="Cancel"
+            >
+              <XCircle className="w-3.5 h-3.5" />
+              Cancel
+            </button>
+          </div>
         )}
       </div>
     </div>
   )
 }
+
 
