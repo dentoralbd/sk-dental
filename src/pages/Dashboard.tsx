@@ -32,7 +32,11 @@ export function Dashboard() {
   async function loadDashboardData() {
     try {
       setLoading(true)
-      const today = format(new Date(), 'yyyy-MM-dd')
+      const todayStart = new Date()
+      todayStart.setHours(0, 0, 0, 0)
+      const todayEnd = new Date()
+      todayEnd.setHours(23, 59, 59, 999)
+
       const monthStart = format(new Date(new Date().getFullYear(), new Date().getMonth(), 1), 'yyyy-MM-dd')
 
       const { count: patientsCount } = await supabase
@@ -45,8 +49,8 @@ export function Dashboard() {
           *,
           patients (first_name, last_name)
         `)
-        .gte('date_time', `${today}T00:00:00`)
-        .lt('date_time', `${today}T23:59:59`)
+        .gte('date_time', todayStart.toISOString())
+        .lte('date_time', todayEnd.toISOString())
         .order('date_time')
         .limit(5)
 

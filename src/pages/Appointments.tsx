@@ -32,15 +32,21 @@ export function Appointments() {
   async function loadAppointments() {
     try {
       setLoading(true)
-      const dateStr = format(selectedDate, 'yyyy-MM-dd')
+      
+      const startOfDay = new Date(selectedDate)
+      startOfDay.setHours(0, 0, 0, 0)
+      
+      const endOfDay = new Date(selectedDate)
+      endOfDay.setHours(23, 59, 59, 999)
+
       const { data, error } = await supabase
         .from('appointments')
         .select(`
           *,
           patients (first_name, last_name)
         `)
-        .gte('date_time', `${dateStr}T00:00:00`)
-        .lt('date_time', `${dateStr}T23:59:59`)
+        .gte('date_time', startOfDay.toISOString())
+        .lte('date_time', endOfDay.toISOString())
         .order('date_time')
 
       if (error) throw error
@@ -245,11 +251,17 @@ function AppointmentModal({ selectedDate, onClose, onSave }: any) {
       const startDateTime = new Date(`${formData.date}T${formData.time}:00`)
       const endDateTime = new Date(startDateTime.getTime() + parseInt(formData.duration) * 60000)
 
+      const startOfDay = new Date(startDateTime)
+      startOfDay.setHours(0, 0, 0, 0)
+      
+      const endOfDay = new Date(startDateTime)
+      endOfDay.setHours(23, 59, 59, 999)
+
       const { data: dayAppts, error: fetchError } = await supabase
         .from('appointments')
         .select('date_time, duration, status')
-        .gte('date_time', `${formData.date}T00:00:00`)
-        .lt('date_time', `${formData.date}T23:59:59`)
+        .gte('date_time', startOfDay.toISOString())
+        .lte('date_time', endOfDay.toISOString())
         .neq('status', 'Cancelled')
 
       if (fetchError) throw fetchError
@@ -269,7 +281,7 @@ function AppointmentModal({ selectedDate, onClose, onSave }: any) {
       const { error } = await supabase.from('appointments').insert([
         {
           patient_id: formData.patient_id,
-          date_time: `${formData.date}T${formData.time}:00`,
+          date_time: startDateTime.toISOString(),
           duration: parseInt(formData.duration),
           type: formData.type,
           status: formData.status,
