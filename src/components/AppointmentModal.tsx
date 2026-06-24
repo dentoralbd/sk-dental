@@ -131,7 +131,7 @@ export function AppointmentModal({
         })
 
         patientId = newPatient.id
-        const patientCode = newPatient.patient_code || patientId
+        const patientCode = (newPatient as { id: string; patient_code?: string | null }).patient_code || patientId
         setPatientLookup(patientCode)
         setPatientLookupMessage(`Created new patient UID: ${patientCode}`)
       }

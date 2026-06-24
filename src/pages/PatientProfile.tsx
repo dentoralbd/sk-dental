@@ -178,6 +178,7 @@ export function PatientProfile() {
   }, [id])
 
   async function loadPatientData() {
+    if (!id) return
     try {
       setLoading(true)
       
@@ -1720,7 +1721,7 @@ function EmptyState({ message }: any) {
 
 function Tooth({ number, condition, color, onClick }: any) {
   return (
-    <div className="flex flex-col items-center cursor-pointer group" onClick={onClick}>
+    <div className="flex flex-col items-center cursor-pointer group" onClick={onClick} title={condition}>
       <svg width="32" height="48" viewBox="0 0 32 48" className={`${color} group-hover:opacity-75 transition-opacity`}>
         <path
           d="M16 2 C10 2, 6 6, 6 12 C6 18, 8 24, 10 32 C11 36, 12 42, 16 46 C20 42, 21 36, 22 32 C24 24, 26 18, 26 12 C26 6, 22 2, 16 2 Z"
