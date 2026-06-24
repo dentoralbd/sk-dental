@@ -12,7 +12,11 @@ export interface Database {
       patients: {
         Row: {
           id: string
+<<<<<<< HEAD
           patient_code: string | null
+=======
+          patient_code: string
+>>>>>>> origin/main
           first_name: string
           last_name: string
           phone: string
@@ -26,7 +30,11 @@ export interface Database {
         }
         Insert: {
           id?: string
+<<<<<<< HEAD
           patient_code?: string | null
+=======
+          patient_code?: string
+>>>>>>> origin/main
           first_name: string
           last_name: string
           phone: string
@@ -40,7 +48,11 @@ export interface Database {
         }
         Update: {
           id?: string
+<<<<<<< HEAD
           patient_code?: string | null
+=======
+          patient_code?: string
+>>>>>>> origin/main
           first_name?: string
           last_name?: string
           phone?: string

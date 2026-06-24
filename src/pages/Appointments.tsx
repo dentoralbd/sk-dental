@@ -123,27 +123,9 @@ export function Appointments() {
         <div className="flex items-center justify-between mb-6">
           <h3 className="text-lg font-semibold">Week View</h3>
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setSelectedDate(addDays(selectedDate, -7))}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setSelectedDate(new Date())}
-            >
-              Today
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setSelectedDate(addDays(selectedDate, 7))}
-            >
-              Next
-            </Button>
+            <Button variant="outline" size="sm" onClick={() => setSelectedDate(addDays(selectedDate, -7))}>Previous</Button>
+            <Button variant="outline" size="sm" onClick={() => setSelectedDate(new Date())}>Today</Button>
+            <Button variant="outline" size="sm" onClick={() => setSelectedDate(addDays(selectedDate, 7))}>Next</Button>
           </div>
         </div>
 
@@ -156,12 +138,17 @@ export function Appointments() {
               <button
                 key={day.toISOString()}
                 onClick={() => setSelectedDate(day)}
+<<<<<<< HEAD
                 className={`p-3 rounded-lg text-center transition-all duration-150 hover:scale-105 active:scale-95 ${
                   isSelected
                     ? 'bg-primary text-white shadow-md'
                     : isToday
                     ? 'bg-blue-50 text-primary border border-primary'
                     : 'hover:bg-gray-100'
+=======
+                className={`p-3 rounded-lg text-center transition-colors ${
+                  isSelected ? 'bg-primary text-white' : isToday ? 'bg-blue-50 text-primary border border-primary' : 'hover:bg-gray-100'
+>>>>>>> origin/main
                 }`}
               >
                 <div className="text-xs font-medium">{format(day, 'EEE')}</div>
@@ -182,9 +169,7 @@ export function Appointments() {
 
       <div className="bg-card rounded-lg shadow-sm border border-gray-200">
         <div className="p-4 border-b border-gray-200">
-          <h3 className="font-semibold">
-            Appointments for {format(selectedDate, 'MMMM d, yyyy')}
-          </h3>
+          <h3 className="font-semibold">Appointments for {format(selectedDate, 'MMMM d, yyyy')}</h3>
         </div>
 
         {loading ? (
@@ -192,10 +177,14 @@ export function Appointments() {
             <span className="spinner" />
           </div>
         ) : appointments.length === 0 ? (
+<<<<<<< HEAD
           <div className="p-8 text-center text-text-secondary">
             <Calendar className="w-10 h-10 text-gray-300 mx-auto mb-2" />
             No appointments for this day
           </div>
+=======
+          <div className="p-8 text-center text-text-secondary">No appointments for this day</div>
+>>>>>>> origin/main
         ) : (
           <div className="divide-y divide-gray-200">
             {appointments.map((appointment) => (
@@ -214,7 +203,14 @@ export function Appointments() {
         <AppointmentModal
           selectedDate={selectedDate}
           onClose={() => setShowModal(false)}
+<<<<<<< HEAD
           onSave={() => { loadAppointments(); loadWeekAppointments(); setShowModal(false) }}
+=======
+          onSave={() => {
+            loadAppointments()
+            setShowModal(false)
+          }}
+>>>>>>> origin/main
         />
       )}
     </div>
@@ -248,11 +244,9 @@ function AppointmentRow({ appointment, onCancel, onStatusChange }: {
             </span>
           </div>
           <p className="text-sm text-text-secondary mt-1">
-            {format(new Date(appointment.date_time), 'h:mm a')} • {appointment.duration} min • {appointment.type}
+            {formatLocalAppointmentDateTime(appointment.date_time)} • {appointment.duration} min • {appointment.type}
           </p>
-          {appointment.notes && (
-            <p className="text-sm text-text-secondary mt-1">{appointment.notes}</p>
-          )}
+          {appointment.notes && <p className="text-sm text-text-secondary mt-1">{appointment.notes}</p>}
         </div>
 
         {!isClosed && (
@@ -292,4 +286,217 @@ function AppointmentRow({ appointment, onCancel, onStatusChange }: {
   )
 }
 
+<<<<<<< HEAD
 
+=======
+function parseFullName(fullName: string): { first_name: string; last_name: string } {
+  const parts = fullName.trim().split(/\s+/)
+  if (parts.length === 1) return { first_name: parts[0], last_name: '-' }
+  const last = parts.pop()!
+  return { first_name: parts.join(' '), last_name: last }
+}
+
+function deriveDOBFromAge(age: number): string {
+  const year = new Date().getFullYear() - age
+  return `${year}-01-01`
+}
+
+function toLocalDateTimeValue(date: string, time: string) {
+  return new Date(`${date}T${time}:00`).getTime()
+}
+
+function formatLocalAppointmentDateTime(dateTime: string) {
+  const [datePart, timePart] = dateTime.split('T')
+  if (!datePart || !timePart) return dateTime
+
+  const [hoursStr, minutesStr] = timePart.split(':')
+  const hours = Number(hoursStr)
+  const minutes = Number(minutesStr)
+  const suffix = hours >= 12 ? 'PM' : 'AM'
+  const normalizedHours = hours % 12 || 12
+
+  return `${normalizedHours}:${minutes.toString().padStart(2, '0')} ${suffix}`
+}
+
+function AppointmentModal({ selectedDate, onClose, onSave }: any) {
+  const [formData, setFormData] = useState({
+    patient_name: '',
+    patient_age: '',
+    patient_sex: '',
+    patient_mobile: '',
+    date: format(selectedDate, 'yyyy-MM-dd'),
+    time: '09:00',
+    duration: '30',
+    type: 'Checkup',
+    status: 'Scheduled',
+    notes: '',
+  })
+  const [saving, setSaving] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+    setErrorMessage('')
+
+    try {
+      const appointmentStart = toLocalDateTimeValue(formData.date, formData.time)
+      const appointmentEnd = appointmentStart + parseInt(formData.duration) * 60000
+
+      const { data: existingAppointments, error: conflictError } = await supabase
+        .from('appointments')
+        .select('id, date_time, duration, status')
+        .neq('status', 'Cancelled')
+        .gte('date_time', `${formData.date}T00:00:00`)
+        .lt('date_time', `${formData.date}T23:59:59`)
+
+      if (conflictError) throw conflictError
+
+      const exactSameTimeTaken = (existingAppointments || []).some((appointment) => appointment.date_time.slice(11, 16) === formData.time)
+      if (exactSameTimeTaken) {
+        setErrorMessage('This appointment time is already booked. Please choose another time.')
+        return
+      }
+
+      const hasConflict = (existingAppointments || []).some((appointment) => {
+        const existingStart = toLocalDateTimeValue(appointment.date_time.slice(0, 10), appointment.date_time.slice(11, 16))
+        const existingEnd = existingStart + appointment.duration * 60000
+        return appointmentStart < existingEnd && appointmentEnd > existingStart
+      })
+
+      if (hasConflict) {
+        setErrorMessage('This appointment overlaps with an existing booking. Please choose another time.')
+        return
+      }
+
+      const { first_name, last_name } = parseFullName(formData.patient_name)
+      const { data: patientData, error: patientError } = await supabase
+        .from('patients')
+        .insert([
+          {
+            first_name,
+            last_name,
+            phone: formData.patient_mobile,
+            gender: formData.patient_sex,
+            date_of_birth: deriveDOBFromAge(parseInt(formData.patient_age)),
+            email: `noemail+${Date.now()}@placeholder.local`,
+          },
+        ])
+        .select('id')
+        .single()
+
+      if (patientError) throw patientError
+
+      const { error: apptError } = await supabase.from('appointments').insert([
+        {
+          patient_id: patientData.id,
+          date_time: `${formData.date}T${formData.time}:00`,
+          duration: parseInt(formData.duration),
+          type: formData.type,
+          status: formData.status,
+          notes: formData.notes || null,
+        },
+      ])
+
+      if (apptError) throw apptError
+      onSave()
+    } catch (error) {
+      console.error('Error creating appointment:', error)
+      setErrorMessage('Failed to create appointment')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+        <div className="p-6 border-b border-gray-200">
+          <h2 className="text-xl font-bold">New Appointment</h2>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {errorMessage && <div className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{errorMessage}</div>}
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Patient Name *</label>
+            <input type="text" required placeholder="Full name" value={formData.patient_name} onChange={(e) => setFormData({ ...formData, patient_name: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Age *</label>
+              <input type="number" required min="0" max="150" placeholder="Years" value={formData.patient_age} onChange={(e) => setFormData({ ...formData, patient_age: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Sex *</label>
+              <select required value={formData.patient_sex} onChange={(e) => setFormData({ ...formData, patient_sex: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                <option value="">Select...</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Mobile Number *</label>
+            <input type="tel" required placeholder="Mobile number" value={formData.patient_mobile} onChange={(e) => setFormData({ ...formData, patient_mobile: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Date</label>
+              <input type="date" required value={formData.date} onChange={(e) => setFormData({ ...formData, date: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Time</label>
+              <input type="time" required value={formData.time} onChange={(e) => setFormData({ ...formData, time: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Duration (min)</label>
+              <select value={formData.duration} onChange={(e) => setFormData({ ...formData, duration: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                <option value="15">15 min</option>
+                <option value="30">30 min</option>
+                <option value="45">45 min</option>
+                <option value="60">1 hour</option>
+                <option value="90">1.5 hours</option>
+                <option value="120">2 hours</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Type</label>
+              <select value={formData.type} onChange={(e) => setFormData({ ...formData, type: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                <option>Checkup</option>
+                <option>Cleaning</option>
+                <option>Filling</option>
+                <option>Root Canal</option>
+                <option>Extraction</option>
+                <option>Consultation</option>
+                <option>Follow-up</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Notes</label>
+            <textarea rows={2} value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary" />
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <Button type="submit" disabled={saving} className="flex-1">
+              {saving ? 'Creating...' : 'Create Appointment'}
+            </Button>
+            <Button type="button" variant="outline" onClick={onClose} className="flex-1">
+              Cancel
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+>>>>>>> origin/main
