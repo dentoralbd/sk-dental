@@ -1,8 +1,31 @@
 import { useState, useEffect } from 'react'
-import { Plus, Search, Trash2, Lightbulb, X, Zap } from 'lucide-react'
+import { Plus, Search, Trash2, Lightbulb, X, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { supabase } from '@/lib/supabase'
 import { format } from 'date-fns'
+
+// ─── LOCAL MEMORY HELPERS ─────────────────────────────
+const LOCAL_MEDS_KEY = 'clinicmx_local_medications'
+const LOCAL_INVS_KEY = 'clinicmx_local_investigations'
+
+function getLocalItems(key: string): any[] {
+  try {
+    return JSON.parse(localStorage.getItem(key) || '[]')
+  } catch {
+    return []
+  }
+}
+
+function saveLocalItem(key: string, item: any) {
+  const items = getLocalItems(key)
+  const exists = items.some(
+    (i: any) => i.name?.toLowerCase() === item.name?.toLowerCase()
+  )
+  if (!exists && item.name?.trim()) {
+    localStorage.setItem(key, JSON.stringify([item, ...items].slice(0, 30)))
+  }
+}
+// ─────────────────────────────────────────────────────
 
 export function Prescriptions() {
   const [prescriptions, setPrescriptions] = useState<any[]>([])
@@ -14,6 +37,10 @@ export function Prescriptions() {
   const [searchTerm, setSearchTerm] = useState('')
   const [showMedTemplates, setShowMedTemplates] = useState(false)
   const [showInvTemplates, setShowInvTemplates] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+
+  const [localMeds, setLocalMeds] = useState<any[]>([])
+  const [localInvs, setLocalInvs] = useState<any[]>([])
 
   const [formData, setFormData] = useState({
     patient_id: '',
@@ -28,6 +55,8 @@ export function Prescriptions() {
     loadPrescriptions()
     loadPatients()
     loadTemplates()
+    setLocalMeds(getLocalItems(LOCAL_MEDS_KEY))
+    setLocalInvs(getLocalItems(LOCAL_INVS_KEY))
   }, [])
 
   async function loadPrescriptions() {
@@ -71,61 +100,25 @@ export function Prescriptions() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     try {
-      await supabase.from('prescriptions').insert([
-        {
-          patient_id: formData.patient_id,
-          diagnosis: formData.diagnosis,
-          notes: formData.notes,
-          prescribed_date: formData.prescribed_date,
-          medications: formData.medications.filter((m) => m.name.trim()),
-          investigations: formData.investigations.filter((i) => i.name.trim()),
-        },
-      ])
-
-      for (const med of formData.medications) {
-        if (med.name.trim()) {
-          const existing = medicationTemplates.find(
-            (t) => t.name.toLowerCase() === med.name.toLowerCase()
-          )
-          if (existing) {
-            await supabase
-              .from('medication_templates')
-              .update({ usage_count: existing.usage_count + 1 })
-              .eq('id', existing.id)
-          } else {
-            await supabase.from('medication_templates').insert([
-              {
-                name: med.name,
-                dosage: med.dosage,
-                frequency: med.frequency,
-                duration: med.duration,
-                instructions: med.instructions,
-                usage_count: 1,
-              },
-            ])
-          }
-        }
+      const payload = {
+        patient_id: formData.patient_id,
+        diagnosis: formData.diagnosis,
+        notes: formData.notes,
+        prescribed_date: formData.prescribed_date,
+        medications: formData.medications.filter((m) => m.name.trim()),
+        investigations: formData.investigations.filter((i) => i.name.trim()),
       }
 
-      for (const inv of formData.investigations) {
-        if (inv.name.trim()) {
-          const existing = investigationTemplates.find(
-            (t) => t.name.toLowerCase() === inv.name.toLowerCase()
-          )
-          if (existing) {
-            await supabase
-              .from('investigation_templates')
-              .update({ usage_count: existing.usage_count + 1 })
-              .eq('id', existing.id)
-          } else {
-            await supabase.from('investigation_templates').insert([
-              {
-                name: inv.name,
-                description: inv.description,
-                usage_count: 1,
-              },
-            ])
-          }
+      if (editingId) {
+        await supabase.from('prescriptions').update(payload).eq('id', editingId)
+      } else {
+        await supabase.from('prescriptions').insert([payload])
+
+        for (const med of formData.medications) {
+          if (med.name.trim()) saveLocalItem(LOCAL_MEDS_KEY, med)
+        }
+        for (const inv of formData.investigations) {
+          if (inv.name.trim()) saveLocalItem(LOCAL_INVS_KEY, inv)
         }
       }
 
@@ -133,13 +126,50 @@ export function Prescriptions() {
       resetForm()
       loadPrescriptions()
       loadTemplates()
+      if (!editingId) {
+        setLocalMeds(getLocalItems(LOCAL_MEDS_KEY))
+        setLocalInvs(getLocalItems(LOCAL_INVS_KEY))
+      }
     } catch (error) {
-      console.error('Error creating prescription:', error)
-      alert('Failed to create prescription')
+      console.error('Error saving prescription:', error)
+      alert('Failed to save prescription')
+    }
+  }
+
+  function startEdit(prescription: any) {
+    setEditingId(prescription.id)
+    setFormData({
+      patient_id: prescription.patient_id || '',
+      diagnosis: prescription.diagnosis || '',
+      notes: prescription.notes || '',
+      prescribed_date: prescription.prescribed_date
+        ? format(new Date(prescription.prescribed_date), 'yyyy-MM-dd')
+        : format(new Date(), 'yyyy-MM-dd'),
+      medications:
+        Array.isArray(prescription.medications) && prescription.medications.length > 0
+          ? prescription.medications
+          : [{ name: '', dosage: '', frequency: '', duration: '', instructions: '' }],
+      investigations:
+        Array.isArray(prescription.investigations) && prescription.investigations.length > 0
+          ? prescription.investigations
+          : [{ name: '', description: '' }],
+    })
+    setShowForm(true)
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm('Are you sure you want to delete this prescription?')) return
+    try {
+      await supabase.from('prescriptions').delete().eq('id', id)
+      loadPrescriptions()
+    } catch (error) {
+      console.error('Error deleting prescription:', error)
+      alert('Failed to delete prescription')
     }
   }
 
   function resetForm() {
+    setEditingId(null)
     setFormData({
       patient_id: '',
       diagnosis: '',
@@ -216,6 +246,39 @@ export function Prescriptions() {
     setShowInvTemplates(false)
   }
 
+  function applyLocalMedication(med: any) {
+    const newMeds = [...formData.medications]
+    const emptyIndex = newMeds.findIndex((m) => !m.name.trim())
+    const item = {
+      name: med.name || '',
+      dosage: med.dosage || '',
+      frequency: med.frequency || '',
+      duration: med.duration || '',
+      instructions: med.instructions || '',
+    }
+    if (emptyIndex >= 0) {
+      newMeds[emptyIndex] = item
+    } else {
+      newMeds.push(item)
+    }
+    setFormData({ ...formData, medications: newMeds })
+  }
+
+  function applyLocalInvestigation(inv: any) {
+    const newInvs = [...formData.investigations]
+    const emptyIndex = newInvs.findIndex((i) => !i.name.trim())
+    const item = {
+      name: inv.name || '',
+      description: inv.description || '',
+    }
+    if (emptyIndex >= 0) {
+      newInvs[emptyIndex] = item
+    } else {
+      newInvs.push(item)
+    }
+    setFormData({ ...formData, investigations: newInvs })
+  }
+
   const filteredPrescriptions = prescriptions.filter((p) => {
     const patientName = `${p.patients?.first_name} ${p.patients?.last_name}`.toLowerCase()
     return (
@@ -231,7 +294,7 @@ export function Prescriptions() {
           <h1 className="text-2xl font-bold">Prescriptions</h1>
           <p className="text-text-secondary">Manage patient prescriptions and investigations</p>
         </div>
-        <Button onClick={() => setShowForm(true)}>
+        <Button onClick={() => { resetForm(); setShowForm(true) }}>
           <Plus className="w-4 h-4 mr-2" />
           New Prescription
         </Button>
@@ -261,6 +324,7 @@ export function Prescriptions() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase">Diagnosis</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase">Medications</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase">Investigations</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -285,6 +349,26 @@ export function Prescriptions() {
                         ? `${prescription.investigations.length} test(s)`
                         : 'None'}
                     </td>
+                    <td className="px-6 py-4 text-sm">
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => startEdit(prescription)}
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg"
+                          title="Edit"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(prescription.id)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -297,10 +381,12 @@ export function Prescriptions() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full my-8">
             <div className="p-6 border-b border-gray-200">
-              <h2 className="text-xl font-bold">New Prescription</h2>
+              <h2 className="text-xl font-bold">
+                {editingId ? 'Edit Prescription' : 'New Prescription'}
+              </h2>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[calc(100vh-200px)] overflow-y-auto">
+            <form onSubmit={handleSubmit} className="p-6 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium mb-1">Patient *</label>
@@ -341,13 +427,9 @@ export function Prescriptions() {
                 />
               </div>
 
-              {/* MEDICATIONS SECTION */}
-              <div className="border-t pt-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <label className="block text-sm font-bold">Medications</label>
-                    <p className="text-xs text-text-secondary">Add medications for this prescription</p>
-                  </div>
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <label className="block text-sm font-medium">Medications</label>
                   <div className="flex gap-2">
                     <Button
                       type="button"
@@ -356,7 +438,7 @@ export function Prescriptions() {
                       onClick={() => setShowMedTemplates(!showMedTemplates)}
                     >
                       <Lightbulb className="w-4 h-4 mr-1" />
-                      Templates
+                      Templates ({medicationTemplates.length})
                     </Button>
                     <Button type="button" size="sm" onClick={addMedication}>
                       <Plus className="w-4 h-4 mr-1" />
@@ -365,14 +447,10 @@ export function Prescriptions() {
                   </div>
                 </div>
 
-                {/* TEMPLATE SUGGESTIONS */}
                 {showMedTemplates && medicationTemplates.length > 0 && (
                   <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-semibold text-sm flex items-center gap-2">
-                        <Zap className="w-4 h-4 text-blue-600" />
-                        Popular Templates
-                      </h4>
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-medium text-sm">Quick Add from Templates</h4>
                       <button type="button" onClick={() => setShowMedTemplates(false)}>
                         <X className="w-4 h-4" />
                       </button>
@@ -383,14 +461,11 @@ export function Prescriptions() {
                           key={template.id}
                           type="button"
                           onClick={() => addMedicationFromTemplate(template)}
-                          className="text-left p-3 bg-white rounded-lg border border-blue-200 hover:border-primary hover:bg-primary/5 transition-all hover:shadow-sm"
+                          className="text-left p-2 bg-white rounded border border-gray-200 hover:border-primary hover:bg-primary/5 transition-colors"
                         >
-                          <div className="font-medium text-sm text-gray-900">{template.name}</div>
-                          <div className="text-xs text-text-secondary mt-1">
+                          <div className="font-medium text-sm">{template.name}</div>
+                          <div className="text-xs text-text-secondary">
                             {template.dosage} • {template.frequency} • {template.duration}
-                          </div>
-                          <div className="text-xs text-blue-600 mt-2 font-medium">
-                            {template.usage_count} times used
                           </div>
                         </button>
                       ))}
@@ -398,8 +473,7 @@ export function Prescriptions() {
                   </div>
                 )}
 
-                {/* MEDICATION INPUT FIELDS */}
-                <div className="space-y-3 mb-4">
+                <div className="space-y-3">
                   {formData.medications.map((med, index) => (
                     <div key={index} className="grid grid-cols-1 md:grid-cols-5 gap-2 p-3 bg-gray-50 rounded-lg">
                       <input
@@ -471,15 +545,32 @@ export function Prescriptions() {
                     </div>
                   ))}
                 </div>
+
+                {localMeds.length > 0 && (
+                  <div className="mt-3">
+                    <div className="text-xs font-medium text-text-secondary mb-2">
+                      Recently Used — click to add:
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {localMeds.map((med, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => applyLocalMedication(med)}
+                          className="px-3 py-1.5 bg-blue-50 text-blue-700 text-sm rounded-full border border-blue-200 hover:bg-blue-100 transition-colors"
+                          title={`${med.dosage} • ${med.frequency} • ${med.duration}`}
+                        >
+                          {med.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* INVESTIGATIONS SECTION */}
-              <div className="border-t pt-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div>
-                    <label className="block text-sm font-bold">Investigations</label>
-                    <p className="text-xs text-text-secondary">Add tests and investigations</p>
-                  </div>
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <label className="block text-sm font-medium">Investigations</label>
                   <div className="flex gap-2">
                     <Button
                       type="button"
@@ -488,7 +579,7 @@ export function Prescriptions() {
                       onClick={() => setShowInvTemplates(!showInvTemplates)}
                     >
                       <Lightbulb className="w-4 h-4 mr-1" />
-                      Templates
+                      Templates ({investigationTemplates.length})
                     </Button>
                     <Button type="button" size="sm" onClick={addInvestigation}>
                       <Plus className="w-4 h-4 mr-1" />
@@ -497,14 +588,10 @@ export function Prescriptions() {
                   </div>
                 </div>
 
-                {/* TEMPLATE SUGGESTIONS */}
                 {showInvTemplates && investigationTemplates.length > 0 && (
                   <div className="mb-4 p-4 bg-green-50 rounded-lg border border-green-200">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-semibold text-sm flex items-center gap-2">
-                        <Zap className="w-4 h-4 text-green-600" />
-                        Popular Templates
-                      </h4>
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-medium text-sm">Quick Add from Templates</h4>
                       <button type="button" onClick={() => setShowInvTemplates(false)}>
                         <X className="w-4 h-4" />
                       </button>
@@ -515,27 +602,21 @@ export function Prescriptions() {
                           key={template.id}
                           type="button"
                           onClick={() => addInvestigationFromTemplate(template)}
-                          className="text-left p-3 bg-white rounded-lg border border-green-200 hover:border-primary hover:bg-primary/5 transition-all hover:shadow-sm"
+                          className="text-left p-2 bg-white rounded border border-gray-200 hover:border-primary hover:bg-primary/5 transition-colors"
                         >
-                          <div className="font-medium text-sm text-gray-900">{template.name}</div>
+                          <div className="font-medium text-sm">{template.name}</div>
                           {template.description && (
-                            <div className="text-xs text-text-secondary mt-1 truncate">
-                              {template.description}
-                            </div>
+                            <div className="text-xs text-text-secondary truncate">{template.description}</div>
                           )}
-                          <div className="text-xs text-green-600 mt-2 font-medium">
-                            {template.usage_count} times used
-                          </div>
                         </button>
                       ))}
                     </div>
                   </div>
                 )}
 
-                {/* INVESTIGATION INPUT FIELDS */}
-                <div className="space-y-3 mb-4">
+                <div className="space-y-3">
                   {formData.investigations.map((inv, index) => (
-                    <div key={index} className="flex flex-col sm:flex-row gap-2 p-3 bg-gray-50 rounded-lg">
+                    <div key={index} className="flex gap-2 p-3 bg-gray-50 rounded-lg">
                       <input
                         type="text"
                         placeholder="Investigation name (e.g., CBC, X-Ray)"
@@ -562,7 +643,7 @@ export function Prescriptions() {
                         <button
                           type="button"
                           onClick={() => removeInvestigation(index)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg self-start sm:self-auto"
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -570,6 +651,27 @@ export function Prescriptions() {
                     </div>
                   ))}
                 </div>
+
+                {localInvs.length > 0 && (
+                  <div className="mt-3">
+                    <div className="text-xs font-medium text-text-secondary mb-2">
+                      Recently Used — click to add:
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {localInvs.map((inv, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => applyLocalInvestigation(inv)}
+                          className="px-3 py-1.5 bg-green-50 text-green-700 text-sm rounded-full border border-green-200 hover:bg-green-100 transition-colors"
+                          title={inv.description || ''}
+                        >
+                          {inv.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -583,9 +685,9 @@ export function Prescriptions() {
                 />
               </div>
 
-              <div className="flex gap-3 pt-4 border-t sticky bottom-0 bg-white">
+              <div className="flex gap-3 pt-4">
                 <Button type="submit" className="flex-1">
-                  Save Prescription
+                  {editingId ? 'Update Prescription' : 'Create Prescription'}
                 </Button>
                 <Button
                   type="button"
