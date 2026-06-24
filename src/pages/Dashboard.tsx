@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { format } from 'date-fns'
+import { safeFormat } from '@/lib/utils'
 import { Users, Calendar, DollarSign, TrendingUp, RefreshCw, ArrowRight } from 'lucide-react'
 
 interface Stats {
@@ -189,8 +190,8 @@ export function Dashboard() {
               {todayAppointments.map((apt) => (
                 <AppointmentItem
                   key={apt.id}
-                  time={format(new Date(apt.date_time), 'h:mm a')}
-                  patient={`${apt.patients.first_name} ${apt.patients.last_name}`}
+                  time={safeFormat(apt.date_time, 'h:mm a')}
+                  patient={`${apt.patients?.first_name ?? ''} ${apt.patients?.last_name ?? ''}`.trim() || 'Unknown Patient'}
                   type={apt.type}
                   status={apt.status}
                 />
@@ -227,7 +228,7 @@ export function Dashboard() {
                   key={patient.id}
                   id={patient.id}
                   name={`${patient.first_name} ${patient.last_name}`}
-                  lastVisit={format(new Date(patient.created_at), 'MMM d, yyyy')}
+                  lastVisit={safeFormat(patient.created_at, 'MMM d, yyyy')}
                   onClick={() => navigate(`/patients/${patient.id}`)}
                 />
               ))}

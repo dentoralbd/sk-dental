@@ -3,27 +3,17 @@ import { Plus, Search, Trash2, Lightbulb, X, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { supabase } from '@/lib/supabase'
 import { format } from 'date-fns'
+import { safeFormat } from '@/lib/utils'
 
-// ─── LOCAL MEMORY HELPERS ─────────────────────────────
-const LOCAL_MEDS_KEY = 'clinicmx_local_medications'
-const LOCAL_INVS_KEY = 'clinicmx_local_investigations'
-
-function getLocalItems(key: string): any[] {
-  try {
-    return JSON.parse(localStorage.getItem(key) || '[]')
-  } catch {
-    return []
-  }
-}
-
-function saveLocalItem(key: string, item: any) {
-  const items = getLocalItems(key)
+// ─── RECENT ITEM HELPERS ──────────────────────────────
+function mergeRecentItem(items: any[], item: any) {
   const exists = items.some(
     (i: any) => i.name?.toLowerCase() === item.name?.toLowerCase()
   )
   if (!exists && item.name?.trim()) {
-    localStorage.setItem(key, JSON.stringify([item, ...items].slice(0, 30)))
+    return [item, ...items].slice(0, 30)
   }
+  return items
 }
 // ─────────────────────────────────────────────────────
 
@@ -55,8 +45,6 @@ export function Prescriptions() {
     loadPrescriptions()
     loadPatients()
     loadTemplates()
-    setLocalMeds(getLocalItems(LOCAL_MEDS_KEY))
-    setLocalInvs(getLocalItems(LOCAL_INVS_KEY))
   }, [])
 
   async function loadPrescriptions() {
@@ -114,22 +102,18 @@ export function Prescriptions() {
       } else {
         await supabase.from('prescriptions').insert([payload])
 
-        for (const med of formData.medications) {
-          if (med.name.trim()) saveLocalItem(LOCAL_MEDS_KEY, med)
-        }
-        for (const inv of formData.investigations) {
-          if (inv.name.trim()) saveLocalItem(LOCAL_INVS_KEY, inv)
-        }
+        setLocalMeds((items) =>
+          formData.medications.reduce((nextItems, med) => mergeRecentItem(nextItems, med), items)
+        )
+        setLocalInvs((items) =>
+          formData.investigations.reduce((nextItems, inv) => mergeRecentItem(nextItems, inv), items)
+        )
       }
 
       setShowForm(false)
       resetForm()
       loadPrescriptions()
       loadTemplates()
-      if (!editingId) {
-        setLocalMeds(getLocalItems(LOCAL_MEDS_KEY))
-        setLocalInvs(getLocalItems(LOCAL_INVS_KEY))
-      }
     } catch (error) {
       console.error('Error saving prescription:', error)
       alert('Failed to save prescription')
@@ -336,7 +320,7 @@ export function Prescriptions() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm">
-                      {format(new Date(prescription.prescribed_date), 'MMM d, yyyy')}
+                      {safeFormat(prescription.prescribed_date, 'MMM d, yyyy')}
                     </td>
                     <td className="px-6 py-4 text-sm">{prescription.diagnosis || 'N/A'}</td>
                     <td className="px-6 py-4 text-sm">
