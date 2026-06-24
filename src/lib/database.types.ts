@@ -12,46 +12,50 @@ export interface Database {
       patients: {
         Row: {
           id: string
-          patient_code: string
+          patient_code: string | null
           first_name: string
           last_name: string
-          phone: string
-          email: string
-          date_of_birth: string
-          gender: string
+          phone: string | null
+          email: string | null
+          date_of_birth: string | null
+          gender: string | null
           address: string | null
           medical_history: string | null
           notes: string | null
           created_at: string
+          updated_at: string
         }
         Insert: {
           id?: string
-          patient_code?: string
+          patient_code?: string | null
           first_name: string
           last_name: string
-          phone: string
-          email: string
-          date_of_birth: string
-          gender: string
+          phone?: string | null
+          email?: string | null
+          date_of_birth?: string | null
+          gender?: string | null
           address?: string | null
           medical_history?: string | null
           notes?: string | null
           created_at?: string
+          updated_at?: string
         }
         Update: {
           id?: string
-          patient_code?: string
+          patient_code?: string | null
           first_name?: string
           last_name?: string
-          phone?: string
-          email?: string
-          date_of_birth?: string
-          gender?: string
+          phone?: string | null
+          email?: string | null
+          date_of_birth?: string | null
+          gender?: string | null
           address?: string | null
           medical_history?: string | null
           notes?: string | null
           created_at?: string
+          updated_at?: string
         }
+        Relationships: []
       }
       appointments: {
         Row: {
@@ -69,7 +73,7 @@ export interface Database {
           patient_id: string
           date_time: string
           duration?: number
-          type: string
+          type?: string
           status?: string
           notes?: string | null
           created_at?: string
@@ -84,6 +88,15 @@ export interface Database {
           notes?: string | null
           created_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: 'appointments_patient_id_fkey'
+            columns: ['patient_id']
+            isOneToOne: false
+            referencedRelation: 'patients'
+            referencedColumns: ['id']
+          }
+        ]
       }
       treatments: {
         Row: {
@@ -122,6 +135,15 @@ export interface Database {
           notes?: string | null
           created_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: 'treatments_patient_id_fkey'
+            columns: ['patient_id']
+            isOneToOne: false
+            referencedRelation: 'patients'
+            referencedColumns: ['id']
+          }
+        ]
       }
       prescriptions: {
         Row: {
@@ -139,11 +161,11 @@ export interface Database {
           id?: string
           patient_id: string
           appointment_id?: string | null
-          medications: Json
+          medications?: Json
           investigations?: Json
           diagnosis?: string | null
           notes?: string | null
-          prescribed_date: string
+          prescribed_date?: string
           created_at?: string
         }
         Update: {
@@ -157,6 +179,15 @@ export interface Database {
           prescribed_date?: string
           created_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: 'prescriptions_patient_id_fkey'
+            columns: ['patient_id']
+            isOneToOne: false
+            referencedRelation: 'patients'
+            referencedColumns: ['id']
+          }
+        ]
       }
       invoices: {
         Row: {
@@ -174,8 +205,8 @@ export interface Database {
           id?: string
           patient_id: string
           appointment_id?: string | null
-          items: Json
-          total_amount: number
+          items?: Json
+          total_amount?: number
           paid_amount?: number
           status?: string
           due_date?: string | null
@@ -192,6 +223,15 @@ export interface Database {
           due_date?: string | null
           created_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: 'invoices_patient_id_fkey'
+            columns: ['patient_id']
+            isOneToOne: false
+            referencedRelation: 'patients'
+            referencedColumns: ['id']
+          }
+        ]
       }
       dental_records: {
         Row: {
@@ -207,7 +247,7 @@ export interface Database {
           id?: string
           patient_id: string
           tooth_number: number
-          condition: string
+          condition?: string
           notes?: string | null
           created_at?: string
           updated_at?: string
@@ -221,6 +261,15 @@ export interface Database {
           created_at?: string
           updated_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: 'dental_records_patient_id_fkey'
+            columns: ['patient_id']
+            isOneToOne: false
+            referencedRelation: 'patients'
+            referencedColumns: ['id']
+          }
+        ]
       }
       patient_visits: {
         Row: {
@@ -256,6 +305,15 @@ export interface Database {
           notes?: string | null
           created_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: 'patient_visits_patient_id_fkey'
+            columns: ['patient_id']
+            isOneToOne: false
+            referencedRelation: 'patients'
+            referencedColumns: ['id']
+          }
+        ]
       }
       medication_templates: {
         Row: {
@@ -288,6 +346,7 @@ export interface Database {
           usage_count?: number
           created_at?: string
         }
+        Relationships: []
       }
       investigation_templates: {
         Row: {
@@ -311,7 +370,55 @@ export interface Database {
           usage_count?: number
           created_at?: string
         }
+        Relationships: []
+      }
+      patient_files: {
+        Row: {
+          id: string
+          patient_id: string
+          file_category: string
+          file_name: string
+          storage_path: string
+          file_size: number | null
+          mime_type: string | null
+          notes: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          patient_id: string
+          file_category: string
+          file_name: string
+          storage_path: string
+          file_size?: number | null
+          mime_type?: string | null
+          notes?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          patient_id?: string
+          file_category?: string
+          file_name?: string
+          storage_path?: string
+          file_size?: number | null
+          mime_type?: string | null
+          notes?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'patient_files_patient_id_fkey'
+            columns: ['patient_id']
+            isOneToOne: false
+            referencedRelation: 'patients'
+            referencedColumns: ['id']
+          }
+        ]
       }
     }
+    Views: Record<string, never>
+    Functions: Record<string, never>
+    Enums: Record<string, never>
   }
 }
