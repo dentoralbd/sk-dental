@@ -5,6 +5,8 @@ interface HeaderProps {
   onMenuClick: () => void
 }
 
+const BUILD_VERSION = 'a26fa94'
+
 export function Header({ onMenuClick }: HeaderProps) {
   const navigate = useNavigate()
 
@@ -15,8 +17,8 @@ export function Header({ onMenuClick }: HeaderProps) {
 
   return (
     <header className="bg-white border-b border-gray-200 px-4 lg:px-6 py-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4 flex-1">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4 flex-1 min-w-0">
           <button
             onClick={onMenuClick}
             className="lg:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -34,7 +36,10 @@ export function Header({ onMenuClick }: HeaderProps) {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 shrink-0">
+          <span className="hidden md:inline-flex px-2 py-1 text-xs font-mono bg-gray-100 text-gray-600 rounded border border-gray-200">
+            Build {BUILD_VERSION}
+          </span>
           <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors relative">
             <Bell className="w-5 h-5 text-text-secondary" />
             <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
