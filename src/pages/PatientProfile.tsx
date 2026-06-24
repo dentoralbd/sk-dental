@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, Calendar as CalendarIcon, FileText, Activity, DollarSign, Pill, Trash2, Edit, Lightbulb, X, Pencil, Upload, Image } from 'lucide-react'
+import { ArrowLeft, Plus, Calendar as CalendarIcon, FileText, Trash2, Lightbulb, X, Pencil, Upload, Image } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { AppointmentModal } from '@/components/AppointmentModal'
 import { supabase } from '@/lib/supabase'
@@ -993,7 +993,7 @@ function InfoRow({ label, value, className = '' }: any) {
   )
 }
 
-function Tooth({ number, condition, color, onClick }: any) {
+function Tooth({ number, color, onClick }: any) {
   return (
     <div className="flex flex-col items-center cursor-pointer group" onClick={onClick}>
       <svg width="32" height="48" viewBox="0 0 32 48" className={`${color} group-hover:opacity-75 transition-opacity`}>
