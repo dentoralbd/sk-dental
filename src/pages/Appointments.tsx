@@ -211,10 +211,28 @@ function AppointmentRow({ appointment, onCancel }: { appointment: Appointment; o
   )
 }
 
+/** Splits a full name into first_name and last_name.
+ * If only one word is provided it becomes first_name and last_name is set to '-'. */
+function parseFullName(fullName: string): { first_name: string; last_name: string } {
+  const parts = fullName.trim().split(/\s+/)
+  if (parts.length === 1) return { first_name: parts[0], last_name: '-' }
+  const last = parts.pop()!
+  return { first_name: parts.join(' '), last_name: last }
+}
+
+/** Derives an approximate date_of_birth from an age in years.
+ * Uses January 1 of (current year - age) as a safe approximation. */
+function deriveDOBFromAge(age: number): string {
+  const year = new Date().getFullYear() - age
+  return `${year}-01-01`
+}
+
 function AppointmentModal({ selectedDate, onClose, onSave }: any) {
-  const [patients, setPatients] = useState<any[]>([])
   const [formData, setFormData] = useState({
-    patient_id: '',
+    patient_name: '',
+    patient_age: '',
+    patient_sex: '',
+    patient_mobile: '',
     date: format(selectedDate, 'yyyy-MM-dd'),
     time: '09:00',
     duration: '30',
@@ -224,35 +242,41 @@ function AppointmentModal({ selectedDate, onClose, onSave }: any) {
   })
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => {
-    loadPatients()
-  }, [])
-
-  async function loadPatients() {
-    const { data } = await supabase
-      .from('patients')
-      .select('id, first_name, last_name')
-      .order('last_name')
-    setPatients(data || [])
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
 
     try {
-      const { error } = await supabase.from('appointments').insert([
-        {
-          patient_id: formData.patient_id,
-          date_time: `${formData.date}T${formData.time}:00`,
-          duration: parseInt(formData.duration),
-          type: formData.type,
-          status: formData.status,
-          notes: formData.notes || null,
-        }
-      ])
+      // Step 1: Create the patient record from the entered details
+      const { first_name, last_name } = parseFullName(formData.patient_name)
+      const { data: patientData, error: patientError } = await supabase
+        .from('patients')
+        .insert([{
+          first_name,
+          last_name,
+          phone: formData.patient_mobile,
+          gender: formData.patient_sex,
+          // Approximate DOB derived from age; exact birth date is unknown at booking time
+          date_of_birth: deriveDOBFromAge(parseInt(formData.patient_age)),
+          // Placeholder email — update the patient record later if a real email is collected
+          email: `noemail+${Date.now()}@placeholder.local`,
+        }])
+        .select('id')
+        .single()
 
-      if (error) throw error
+      if (patientError) throw patientError
+
+      // Step 2: Create the appointment linked to the newly created patient
+      const { error: apptError } = await supabase.from('appointments').insert([{
+        patient_id: patientData.id,
+        date_time: `${formData.date}T${formData.time}:00`,
+        duration: parseInt(formData.duration),
+        type: formData.type,
+        status: formData.status,
+        notes: formData.notes || null,
+      }])
+
+      if (apptError) throw apptError
       onSave()
     } catch (error) {
       console.error('Error creating appointment:', error)
@@ -271,20 +295,57 @@ function AppointmentModal({ selectedDate, onClose, onSave }: any) {
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Patient *</label>
-            <select
+            <label className="block text-sm font-medium mb-1">Patient Name *</label>
+            <input
+              type="text"
               required
-              value={formData.patient_id}
-              onChange={(e) => setFormData({ ...formData, patient_id: e.target.value })}
+              placeholder="Full name"
+              value={formData.patient_name}
+              onChange={(e) => setFormData({ ...formData, patient_name: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <option value="">Select patient...</option>
-              {patients.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.first_name} {p.last_name}
-                </option>
-              ))}
-            </select>
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Age *</label>
+              <input
+                type="number"
+                required
+                min="0"
+                max="150"
+                placeholder="Years"
+                value={formData.patient_age}
+                onChange={(e) => setFormData({ ...formData, patient_age: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Sex *</label>
+              <select
+                required
+                value={formData.patient_sex}
+                onChange={(e) => setFormData({ ...formData, patient_sex: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option value="">Select...</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Mobile Number *</label>
+            <input
+              type="tel"
+              required
+              placeholder="Mobile number"
+              value={formData.patient_mobile}
+              onChange={(e) => setFormData({ ...formData, patient_mobile: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
