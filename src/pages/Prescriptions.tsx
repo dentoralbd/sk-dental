@@ -3,6 +3,7 @@ import { Plus, Search, Trash2, Lightbulb, X, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { supabase } from '@/lib/supabase'
 import { format } from 'date-fns'
+import { safeFormat } from '@/lib/utils'
 
 // ─── LOCAL MEMORY HELPERS ─────────────────────────────
 const LOCAL_MEDS_KEY = 'clinicmx_local_medications'
@@ -336,7 +337,7 @@ export function Prescriptions() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm">
-                      {format(new Date(prescription.prescribed_date), 'MMM d, yyyy')}
+                      {safeFormat(prescription.prescribed_date, 'MMM d, yyyy')}
                     </td>
                     <td className="px-6 py-4 text-sm">{prescription.diagnosis || 'N/A'}</td>
                     <td className="px-6 py-4 text-sm">
