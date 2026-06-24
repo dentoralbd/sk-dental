@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/Button'
 import { supabase } from '@/lib/supabase'
 import { format } from 'date-fns'
 
-<<<<<<< HEAD
 const avatarColors = [
   'bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-orange-500',
   'bg-pink-500', 'bg-teal-500', 'bg-indigo-500', 'bg-rose-500',
@@ -13,7 +12,8 @@ const avatarColors = [
 
 function getAvatarColor(id: string) {
   return avatarColors[id.charCodeAt(0) % avatarColors.length]
-=======
+}
+
 function deriveDateOfBirthFromAge(age: number) {
   const today = new Date()
   const approximateBirthDate = new Date(today.getFullYear() - age, today.getMonth(), today.getDate())
@@ -31,7 +31,6 @@ function calculateAgeFromDate(dateOfBirth: string) {
   }
 
   return age
->>>>>>> origin/main
 }
 
 export function Patients() {

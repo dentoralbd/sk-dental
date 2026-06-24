@@ -288,7 +288,6 @@ export function PatientProfile() {
           Back
         </Button>
         <div className="flex-1">
-<<<<<<< HEAD
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold">
               {patient.first_name} {patient.last_name}
@@ -299,13 +298,7 @@ export function PatientProfile() {
               </span>
             )}
           </div>
-          <p className="text-text-secondary">{patient.email} • {patient.phone}</p>
-=======
-          <h1 className="text-2xl font-bold">
-            {patient.first_name} {patient.last_name}
-          </h1>
           <p className="text-text-secondary">{patient.phone || 'No phone provided'}</p>
->>>>>>> origin/main
         </div>
       </div>
 
