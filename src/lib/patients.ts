@@ -14,26 +14,26 @@ interface CreatePatientPayload {
 
 export async function createPatient(payload: CreatePatientPayload) {
   const patientsTable: any = supabase.from('patients')
+
+  // Only request 'id' in the RETURNING clause so the INSERT succeeds even
+  // when the patient_code column has not yet been added by migrations.
   const { data, error } = await patientsTable
     .insert([payload])
-    .select('id, patient_code')
+    .select('id')
     .single()
-  const createdPatient = data as { id: string; patient_code?: string | null } | null
+  const createdPatient = data as { id: string } | null
 
   if (error) throw error
   if (!createdPatient?.id) throw new Error('Failed to create patient')
 
-  if (createdPatient.patient_code) {
-    return createdPatient
-  }
-
-  const { data: patientData, error: patientFetchError } = await patientsTable
-    .select('id, patient_code')
+  // Fetch all available columns (patient_code included when migration has run)
+  // in a separate read. Ignore any error here so a missing patient_code column
+  // does not prevent patient creation from succeeding.
+  const { data: patientData } = await patientsTable
+    .select('*')
     .eq('id', createdPatient.id)
     .single()
   const fetchedPatient = patientData as { id: string; patient_code?: string | null } | null
-
-  if (patientFetchError) throw patientFetchError
 
   return fetchedPatient || createdPatient
 }

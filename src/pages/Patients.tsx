@@ -94,10 +94,11 @@ export function Patients() {
 
     try {
       if (editingId) {
-        await supabase
+        const { error: updateError } = await supabase
           .from('patients')
-          .update(patientPayload)
+          .update(patientPayload as any)
           .eq('id', editingId)
+        if (updateError) throw updateError
       } else {
         await createPatient(patientPayload)
       }
