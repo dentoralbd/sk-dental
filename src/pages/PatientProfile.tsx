@@ -1,17 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
-<<<<<<< HEAD
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Plus, Calendar as CalendarIcon, FileText, Activity, DollarSign, Pill, Upload, Image, X, User, FolderOpen, MessageSquare } from 'lucide-react'
-=======
-import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, Calendar as CalendarIcon, FileText, Activity, DollarSign, Pill, Trash2, Edit, Lightbulb, X, Pencil, Upload, Image } from 'lucide-react'
->>>>>>> origin/main
+import { ArrowLeft, Plus, Calendar as CalendarIcon, FileText, Activity, DollarSign, Pill, Trash2, Lightbulb, Pencil, Upload, Image, X, User, FolderOpen, MessageSquare } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { AppointmentModal } from '@/components/AppointmentModal'
 import { supabase } from '@/lib/supabase'
 import { format } from 'date-fns'
 
-<<<<<<< HEAD
 type SectionId =
   | 'profile'
   | 'medical'
@@ -87,30 +81,36 @@ function formatDateValue(value?: string | null, dateFormat = 'MMM d, yyyy') {
 function getInvoiceDue(invoice: any) {
   return (invoice.total_amount || 0) - (invoice.paid_amount || 0)
 }
-=======
-// ─── LOCAL MEMORY HELPERS ─────────────────────────────
+
+// ─── SESSION MEMORY HELPERS ───────────────────────────
 const LOCAL_MEDS_KEY = 'clinicmx_local_medications'
 const LOCAL_INVS_KEY = 'clinicmx_local_investigations'
+const inMemoryMeds: any[] = []
+const inMemoryInvs: any[] = []
 
 function getLocalItems(key: string): any[] {
-  try {
-    return JSON.parse(localStorage.getItem(key) || '[]')
-  } catch {
-    return []
+  if (key === LOCAL_MEDS_KEY) {
+    return [...inMemoryMeds]
   }
+  if (key === LOCAL_INVS_KEY) {
+    return [...inMemoryInvs]
+  }
+  return []
 }
 
 function saveLocalItem(key: string, item: any) {
-  const items = getLocalItems(key)
+  if (!item.name?.trim()) return
+  const target = key === LOCAL_MEDS_KEY ? inMemoryMeds : inMemoryInvs
+  if (!target) return
+  const items = [...target]
   const exists = items.some(
     (i: any) => i.name?.toLowerCase() === item.name?.toLowerCase()
   )
-  if (!exists && item.name?.trim()) {
-    localStorage.setItem(key, JSON.stringify([item, ...items].slice(0, 30)))
+  if (!exists) {
+    target.splice(0, target.length, ...[item, ...items].slice(0, 30))
   }
 }
 // ─────────────────────────────────────────────────────
->>>>>>> origin/main
 
 export function PatientProfile() {
   const { id } = useParams<{ id: string }>()
@@ -850,7 +850,7 @@ export function PatientProfile() {
     <div className="bg-card rounded-3xl shadow-sm border border-gray-200">
       <div className="p-4 border-b border-gray-200 flex justify-between items-center">
         <h3 className="font-semibold">Prescription History</h3>
-        <Button size="sm" onClick={() => setShowPrescriptionForm(true)}>
+        <Button size="sm" onClick={() => { setEditingPrescriptionId(null); setPrescriptionForm({ diagnosis: '', medications: [{ name: '', dosage: '', frequency: '', duration: '', instructions: '' }], investigations: [{ name: '', description: '' }], notes: '' }); setShowPrescriptionForm(true) }}>
           <Plus className="w-4 h-4 mr-1" />
           Add Prescription
         </Button>
@@ -863,6 +863,24 @@ export function PatientProfile() {
             <div key={prescription.id} className="p-4">
               <div className="flex items-center justify-between mb-3">
                 <div className="font-medium">{formatDateValue(prescription.prescribed_date, 'MMMM d, yyyy')}</div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => startEditPrescription(prescription)}
+                    className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"
+                    title="Edit"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeletePrescription(prescription.id)}
+                    className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg"
+                    title="Delete"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
               {prescription.diagnosis && (
                 <div className="mb-3">
@@ -1345,15 +1363,9 @@ export function PatientProfile() {
   }
 
   return (
-<<<<<<< HEAD
     <div className="space-y-6 pb-24 md:pb-6 page-fade-in">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
         <Button variant="outline" size="sm" onClick={() => navigate('/patients')} className="w-full sm:w-auto">
-=======
-    <div className="space-y-6 page-fade-in">
-      <div className="flex items-center gap-4">
-        <Button variant="outline" size="sm" onClick={() => navigate('/patients')}>
->>>>>>> origin/main
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back
         </Button>
@@ -1427,371 +1439,6 @@ export function PatientProfile() {
           {mobileNavSections.map((sectionId) => {
             const section = sectionOptions.find((item) => item.id === sectionId)!
 
-<<<<<<< HEAD
-=======
-      {activeTab === 'visits' && (
-        <div className="bg-card rounded-lg shadow-sm border border-gray-200">
-          <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-            <h3 className="font-semibold">Visit History</h3>
-            <Button size="sm" onClick={() => setShowVisitForm(true)}>
-              <Plus className="w-4 h-4 mr-1" />
-              Add Visit
-            </Button>
-          </div>
-          {visits.length === 0 ? (
-            <div className="p-8 text-center text-text-secondary">No visits recorded</div>
-          ) : (
-            <div className="divide-y divide-gray-200">
-              {visits.map((visit) => (
-                <div key={visit.id} className="p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <CalendarIcon className="w-4 h-4 text-text-secondary" />
-                    <span className="font-medium">{format(new Date(visit.visit_date), 'MMMM d, yyyy h:mm a')}</span>
-                  </div>
-                  {visit.chief_complaint && <InfoRow label="Chief Complaint" value={visit.chief_complaint} />}
-                  {visit.examination_findings && <InfoRow label="Examination" value={visit.examination_findings} />}
-                  {visit.diagnosis && <InfoRow label="Diagnosis" value={visit.diagnosis} />}
-                  {visit.treatment_plan && <InfoRow label="Treatment Plan" value={visit.treatment_plan} />}
-                  {visit.notes && <InfoRow label="Notes" value={visit.notes} />}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {activeTab === 'dental-chart' && (
-        <div className="bg-card rounded-lg shadow-sm border border-gray-200 p-6">
-          <h3 className="font-semibold mb-6 text-center">Dental Chart</h3>
-          <div className="space-y-8">
-            <div>
-              <h4 className="text-sm font-medium text-text-secondary mb-4 text-center">Upper Teeth</h4>
-              <div className="flex justify-center gap-2 flex-wrap">
-                {[...Array(16)].map((_, i) => {
-                  const toothNum = i + 1
-                  const condition = getToothCondition(toothNum)
-                  return (
-                    <Tooth
-                      key={toothNum}
-                      number={toothNum}
-                      condition={condition}
-                      color={getToothColor(condition)}
-                      onClick={() => setSelectedTooth(toothNum)}
-                    />
-                  )
-                })}
-              </div>
-            </div>
-
-            <div>
-              <h4 className="text-sm font-medium text-text-secondary mb-4 text-center">Lower Teeth</h4>
-              <div className="flex justify-center gap-2 flex-wrap">
-                {[...Array(16)].map((_, i) => {
-                  const toothNum = i + 17
-                  const condition = getToothCondition(toothNum)
-                  return (
-                    <Tooth
-                      key={toothNum}
-                      number={toothNum}
-                      condition={condition}
-                      color={getToothColor(condition)}
-                      onClick={() => setSelectedTooth(toothNum)}
-                    />
-                  )
-                })}
-              </div>
-            </div>
-
-            <div className="flex flex-wrap gap-3 justify-center pt-4 border-t border-gray-200">
-              <Legend color="fill-white stroke-gray-400" label="Healthy" />
-              <Legend color="fill-red-200 stroke-red-500" label="Cavity" />
-              <Legend color="fill-blue-200 stroke-blue-500" label="Filled" />
-              <Legend color="fill-purple-200 stroke-purple-500" label="Root Canal" />
-              <Legend color="fill-yellow-200 stroke-yellow-600" label="Crown" />
-              <Legend color="fill-gray-300 stroke-gray-500" label="Missing" />
-              <Legend color="fill-green-200 stroke-green-500" label="Implant" />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'treatments' && (
-        <div className="bg-card rounded-lg shadow-sm border border-gray-200">
-          <div className="p-4 border-b border-gray-200">
-            <h3 className="font-semibold">Treatment History</h3>
-          </div>
-          {treatments.length === 0 ? (
-            <div className="p-8 text-center text-text-secondary">No treatments recorded</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">Date</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">Treatment</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">Tooth</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">Status</th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">Cost</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {treatments.map((treatment) => (
-                    <tr key={treatment.id}>
-                      <td className="px-4 py-3 text-sm">{format(new Date(treatment.created_at), 'MMM d, yyyy')}</td>
-                      <td className="px-4 py-3">
-                        <div className="font-medium">{treatment.treatment_type}</div>
-                        {treatment.description && <div className="text-sm text-text-secondary">{treatment.description}</div>}
-                      </td>
-                      <td className="px-4 py-3 text-sm">{treatment.tooth_number || 'N/A'}</td>
-                      <td className="px-4 py-3">
-                        <span className={`px-2 py-1 text-xs rounded-full ${
-                          treatment.status === 'Completed' ? 'bg-green-100 text-green-800' :
-                          treatment.status === 'In Progress' ? 'bg-blue-100 text-blue-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {treatment.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm">৳{treatment.cost?.toFixed(2) || '0.00'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
-
-      {activeTab === 'prescriptions' && (
-        <div className="bg-card rounded-lg shadow-sm border border-gray-200">
-          <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-            <h3 className="font-semibold">Prescription History</h3>
-            <Button size="sm" onClick={() => { setEditingPrescriptionId(null); setPrescriptionForm({ diagnosis: '', medications: [{ name: '', dosage: '', frequency: '', duration: '', instructions: '' }], investigations: [{ name: '', description: '' }], notes: '' }); setShowPrescriptionForm(true) }}>
-              <Plus className="w-4 h-4 mr-1" />
-              Add Prescription
-            </Button>
-          </div>
-          {prescriptions.length === 0 ? (
-            <div className="p-8 text-center text-text-secondary">No prescriptions recorded</div>
-          ) : (
-            <div className="divide-y divide-gray-200">
-              {prescriptions.map((prescription) => (
-                <div key={prescription.id} className="p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="font-medium">{format(new Date(prescription.prescribed_date), 'MMMM d, yyyy')}</div>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => startEditPrescription(prescription)}
-                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg"
-                        title="Edit"
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeletePrescription(prescription.id)}
-                        className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                  {prescription.diagnosis && (
-                    <div className="mb-3">
-                      <span className="text-sm font-medium text-text-secondary">Diagnosis: </span>
-                      <span className="text-sm">{prescription.diagnosis}</span>
-                    </div>
-                  )}
-                  {Array.isArray(prescription.medications) && prescription.medications.length > 0 && (
-                    <div className="mb-3">
-                      <div className="text-sm font-medium text-text-secondary mb-2">Medications:</div>
-                      <div className="space-y-2">
-                        {prescription.medications.map((med: any, idx: number) => (
-                          <div key={idx} className="text-sm bg-blue-50 p-2 rounded">
-                            <div className="font-medium">{med.name}</div>
-                            <div className="text-text-secondary">
-                              {med.dosage} • {med.frequency} • {med.duration}
-                              {med.instructions && ` • ${med.instructions}`}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {Array.isArray(prescription.investigations) && prescription.investigations.length > 0 && (
-                    <div className="mb-3">
-                      <div className="text-sm font-medium text-text-secondary mb-2">Investigations:</div>
-                      <div className="space-y-1">
-                        {prescription.investigations.map((inv: any, idx: number) => (
-                          <div key={idx} className="text-sm bg-green-50 p-2 rounded">
-                            <span className="font-medium">{inv.name}</span>
-                            {inv.description && <span className="text-text-secondary"> - {inv.description}</span>}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {prescription.notes && (
-                    <div className="text-sm">
-                      <span className="font-medium text-text-secondary">Notes: </span>
-                      {prescription.notes}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {activeTab === 'appointments' && (
-        <div className="bg-card rounded-lg shadow-sm border border-gray-200">
-          <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-            <h3 className="font-semibold">Appointment History</h3>
-            <Button onClick={() => setShowAppointmentForm(true)} size="sm">
-              <Plus className="w-4 h-4 mr-2" />
-              New Appointment
-            </Button>
-          </div>
-          {appointments.length === 0 ? (
-            <div className="p-8 text-center text-text-secondary">No appointments recorded</div>
-          ) : (
-            <div className="divide-y divide-gray-200">
-              {appointments.map((appointment) => (
-                <div key={appointment.id} className="p-4 flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="font-medium">{format(new Date(appointment.date_time), 'MMMM d, yyyy h:mm a')}</div>
-                    <div className="text-sm text-text-secondary">{appointment.type} • {appointment.duration} min</div>
-                    {appointment.notes && <div className="text-sm mt-1">{appointment.notes}</div>}
-                  </div>
-                  <span className={`px-2 py-1 text-xs rounded-full ${
-                    appointment.status === 'Completed' ? 'bg-green-100 text-green-800' :
-                    appointment.status === 'Cancelled' ? 'bg-red-100 text-red-800' :
-                    'bg-blue-100 text-blue-800'
-                  }`}>
-                    {appointment.status}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {activeTab === 'billing' && (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="text-sm text-blue-600 font-medium">Total Billed</div>
-              <div className="text-2xl font-bold text-blue-900">৳{totalBilled.toFixed(2)}</div>
-            </div>
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <div className="text-sm text-green-600 font-medium">Total Paid</div>
-              <div className="text-2xl font-bold text-green-900">৳{totalPaid.toFixed(2)}</div>
-            </div>
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <div className="text-sm text-red-600 font-medium">Balance Due</div>
-              <div className="text-2xl font-bold text-red-900">৳{totalDue.toFixed(2)}</div>
-            </div>
-          </div>
-
-          <div className="bg-card rounded-lg shadow-sm border border-gray-200">
-            <div className="p-4 border-b border-gray-200">
-              <h3 className="font-semibold">Invoice History</h3>
-            </div>
-            {invoices.length === 0 ? (
-              <div className="p-8 text-center text-text-secondary">No invoices recorded</div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50 border-b border-gray-200">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">Date</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">Items</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">Total</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">Paid</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">Due</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {invoices.map((invoice) => (
-                      <tr key={invoice.id}>
-                        <td className="px-4 py-3 text-sm">{format(new Date(invoice.created_at), 'MMM d, yyyy')}</td>
-                        <td className="px-4 py-3 text-sm">
-                          {Array.isArray(invoice.items) ? invoice.items.length : 0} item(s)
-                        </td>
-                        <td className="px-4 py-3 text-sm">৳{invoice.total_amount?.toFixed(2)}</td>
-                        <td className="px-4 py-3 text-sm">৳{invoice.paid_amount?.toFixed(2)}</td>
-                        <td className="px-4 py-3 text-sm">৳{(invoice.total_amount - invoice.paid_amount)?.toFixed(2)}</td>
-                        <td className="px-4 py-3">
-                          <span className={`px-2 py-1 text-xs rounded-full ${
-                            invoice.status === 'Paid' ? 'bg-green-100 text-green-800' :
-                            invoice.status === 'Partial' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-red-100 text-red-800'
-                          }`}>
-                            {invoice.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'files' && (
-        <div className="space-y-6">
-          {/* Upload area */}
-          <div className="bg-card rounded-lg shadow-sm border border-gray-200 p-6">
-            <h3 className="font-semibold mb-4">Upload File</h3>
-            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
-              <div>
-                <label className="block text-sm font-medium mb-1">Category</label>
-                <select
-                  value={fileCategory}
-                  onChange={(e) => setFileCategory(e.target.value as any)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                >
-                  <option value="profile_photo">Profile Photo</option>
-                  <option value="clinical_image">Clinical Image</option>
-                  <option value="xray_image">X-Ray Image</option>
-                </select>
-              </div>
-              <div>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleFileUpload}
-                />
-                <Button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploadingFile}
-                >
-                  <Upload className="w-4 h-4 mr-2" />
-                  {uploadingFile ? 'Uploading…' : 'Choose & Upload'}
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          {/* File list grouped by category */}
-          {(['profile_photo', 'clinical_image', 'xray_image'] as const).map((cat) => {
-            const catFiles = files.filter((f) => f.file_category === cat)
-            if (catFiles.length === 0) return null
-            const labels: Record<string, string> = {
-              profile_photo: 'Profile Photos',
-              clinical_image: 'Clinical Images',
-              xray_image: 'X-Ray Images',
-            }
->>>>>>> origin/main
             return (
               <BottomNavButton
                 key={section.id}
