@@ -190,7 +190,7 @@ export function Dashboard() {
                 <AppointmentItem
                   key={apt.id}
                   time={format(new Date(apt.date_time), 'h:mm a')}
-                  patient={`${apt.patients.first_name} ${apt.patients.last_name}`}
+                  patient={`${apt.patients?.first_name ?? ''} ${apt.patients?.last_name ?? ''}`.trim() || 'Unknown Patient'}
                   type={apt.type}
                   status={apt.status}
                 />
