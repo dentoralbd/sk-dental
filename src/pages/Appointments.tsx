@@ -247,6 +247,29 @@ function AppointmentModal({ selectedDate, onClose, onSave }: any) {
     setSaving(true)
 
     try {
+      const appointmentStart = new Date(`${formData.date}T${formData.time}:00`)
+      const appointmentEnd = new Date(appointmentStart.getTime() + parseInt(formData.duration) * 60000)
+
+      const { data: existingAppointments, error: conflictError } = await supabase
+        .from('appointments')
+        .select('id, date_time, duration, status')
+        .eq('status', 'Scheduled')
+        .gte('date_time', `${formData.date}T00:00:00`)
+        .lt('date_time', `${formData.date}T23:59:59`)
+
+      if (conflictError) throw conflictError
+
+      const hasConflict = (existingAppointments || []).some((appointment) => {
+        const existingStart = new Date(appointment.date_time)
+        const existingEnd = new Date(existingStart.getTime() + appointment.duration * 60000)
+        return appointmentStart < existingEnd && appointmentEnd > existingStart
+      })
+
+      if (hasConflict) {
+        alert('This time slot is already booked. Please choose another time.')
+        return
+      }
+
       // Step 1: Create the patient record from the entered details
       const { first_name, last_name } = parseFullName(formData.patient_name)
       const { data: patientData, error: patientError } = await supabase
