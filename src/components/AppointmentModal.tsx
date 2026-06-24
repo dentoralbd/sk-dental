@@ -35,10 +35,23 @@ export function AppointmentModal({
   })
   const [saving, setSaving] = useState(false)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [patientLookup, setPatientLookup] = useState('')
+  const [patientLookupMessage, setPatientLookupMessage] = useState<string | null>(null)
 
   useEffect(() => {
     loadPatients()
   }, [])
+
+  useEffect(() => {
+    if (!defaultPatientId || patients.length === 0) return
+
+    const patient = patients.find((p) => p.id === defaultPatientId)
+    if (patient) {
+      setFormData((prev) => ({ ...prev, patient_id: patient.id }))
+      setPatientLookup(patient.patient_code || patient.id)
+      setPatientLookupMessage(`Using existing patient ${patient.first_name} ${patient.last_name}`)
+    }
+  }, [defaultPatientId, patients])
 
   async function loadPatients() {
     try {
@@ -54,6 +67,42 @@ export function AppointmentModal({
       console.error('Error loading patients:', error)
       setLoadError('Unable to load patients right now. You can still create a new appointment for a new patient.')
       setPatients([])
+    }
+  }
+
+  function handlePatientLookup() {
+    const lookup = patientLookup.trim()
+
+    if (!lookup) {
+      setPatientLookupMessage('Enter a patient UID or patient code to use an existing patient.')
+      setFormData((prev) => ({ ...prev, patient_id: '' }))
+      return
+    }
+
+    const matchedPatient = patients.find((patient) => {
+      const normalizedLookup = lookup.toLowerCase()
+      const normalizedId = (patient.id || '').toLowerCase()
+      const normalizedCode = (patient.patient_code || '').toLowerCase()
+      return normalizedId === normalizedLookup || normalizedCode === normalizedLookup
+    })
+
+    if (matchedPatient) {
+      setFormData((prev) => ({ ...prev, patient_id: matchedPatient.id }))
+      setPatientMode('existing')
+      setPatientLookupMessage(`Using existing patient ${matchedPatient.first_name} ${matchedPatient.last_name}`)
+      return
+    }
+
+    setFormData((prev) => ({ ...prev, patient_id: '' }))
+    setPatientLookupMessage('No matching patient found. Switch to New Patient to create one.')
+  }
+
+  function handleExistingPatientSelect(patientId: string) {
+    const matchedPatient = patients.find((patient) => patient.id === patientId)
+    if (matchedPatient) {
+      setFormData((prev) => ({ ...prev, patient_id: matchedPatient.id }))
+      setPatientLookup(matchedPatient.patient_code || matchedPatient.id)
+      setPatientLookupMessage(`Using existing patient ${matchedPatient.first_name} ${matchedPatient.last_name}`)
     }
   }
 
@@ -87,12 +136,14 @@ export function AppointmentModal({
 
         if (patientError) throw patientError
         if (!newPatient || newPatient.length === 0) throw new Error('Failed to create patient')
-        
+
         patientId = newPatient[0].id
+        setPatientLookup(patientId)
+        setPatientLookupMessage(`Created new patient UID: ${patientId}`)
       }
 
       if (!patientId) {
-        alert('Please select or create a patient')
+        alert('Please enter a valid patient UID/code or create a new patient first')
         setSaving(false)
         return
       }
@@ -191,24 +242,45 @@ export function AppointmentModal({
           {/* Existing Patient Selection */}
           {patientMode === 'existing' && (
             <div>
-              <label className="block text-sm font-medium mb-1">Patient *</label>
+              <label className="block text-sm font-medium mb-1">Patient UID / Patient Code *</label>
               {loadError && (
                 <p className="text-sm text-red-600 mb-2">{loadError}</p>
               )}
-              <select
-                required
-                value={formData.patient_id}
-                onChange={(e) => setFormData({ ...formData, patient_id: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                disabled={!!defaultPatientId}
-              >
-                <option value="">Select patient...</option>
-                {patients.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.patient_code ? `${p.patient_code} - ` : ''}{p.first_name} {p.last_name}
-                  </option>
-                ))}
-              </select>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={patientLookup}
+                  onChange={(e) => setPatientLookup(e.target.value)}
+                  placeholder="Enter patient UID or code"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                <Button type="button" variant="outline" onClick={handlePatientLookup}>
+                  Use Existing
+                </Button>
+              </div>
+
+              {patientLookupMessage && (
+                <p className={`mt-2 text-sm ${patientLookupMessage.includes('Using existing patient') ? 'text-green-600' : patientLookupMessage.includes('Created new patient') ? 'text-blue-600' : 'text-gray-600'}`}>
+                  {patientLookupMessage}
+                </p>
+              )}
+
+              <div className="mt-3">
+                <label className="block text-sm font-medium mb-1">Or choose from patients</label>
+                <select
+                  required={patientMode === 'existing'}
+                  value={formData.patient_id}
+                  onChange={(e) => handleExistingPatientSelect(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="">Select patient...</option>
+                  {patients.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.patient_code ? `${p.patient_code} - ` : ''}{p.first_name} {p.last_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           )}
 
