@@ -3,6 +3,7 @@ import { Plus, Search, Edit, Trash2, Eye, Users } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/Button'
 import { supabase } from '@/lib/supabase'
+import { ensurePatientCode } from '@/lib/patientCode'
 import { format } from 'date-fns'
 
 const avatarColors = [
@@ -100,7 +101,16 @@ export function Patients() {
           .update(patientPayload)
           .eq('id', editingId)
       } else {
-        await supabase.from('patients').insert([patientPayload])
+        const { data: createdPatient, error: createError } = await supabase
+          .from('patients')
+          .insert([patientPayload])
+          .select('id, patient_code')
+          .single()
+
+        if (createError) throw createError
+        if (!createdPatient?.id) throw new Error('Failed to create patient')
+
+        await ensurePatientCode(createdPatient.id, createdPatient.patient_code)
       }
       setShowForm(false)
       setEditingId(null)
