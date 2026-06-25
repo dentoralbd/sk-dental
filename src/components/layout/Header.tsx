@@ -22,6 +22,7 @@ export function Header({ onMenuClick }: HeaderProps) {
           <button
             onClick={onMenuClick}
             className="lg:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            aria-label="Open menu"
           >
             <Menu className="w-5 h-5" />
           </button>
