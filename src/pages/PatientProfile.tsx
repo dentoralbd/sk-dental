@@ -15,7 +15,7 @@ type SectionId =
   | 'prescriptions'
   | 'forms'
   | 'bookings'
-  | 'operations'
+  | 'treatment'
   | 'visits'
   | 'investigations'
   | 'files'
