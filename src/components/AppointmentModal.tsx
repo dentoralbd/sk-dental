@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { format } from 'date-fns'
 import { Button } from '@/components/ui/Button'
 import { supabase } from '@/lib/supabase'
+import { ensurePatientCode } from '@/lib/patientCode'
 import { createPatient } from '@/lib/patients'
 import { UserPlus, Users } from 'lucide-react'
 
@@ -131,9 +132,16 @@ export function AppointmentModal({
         })
 
         patientId = newPatient.id
-        const patientCode = (newPatient as { id: string; patient_code?: string | null }).patient_code || patientId
-        setPatientLookup(patientCode)
-        setPatientLookupMessage(`Created new patient UID: ${patientCode}`)
+        let patientCode = (newPatient as { id: string; patient_code?: string | null }).patient_code || null
+        if (!patientCode) {
+          try {
+            patientCode = await ensurePatientCode(newPatient.id, patientCode)
+          } catch (error: any) {
+            if (error?.code !== '42703') throw error
+          }
+        }
+        setPatientLookup(patientCode || patientId)
+        setPatientLookupMessage(`Created new patient UID: ${patientCode || patientId}`)
       }
 
       if (!patientId) {

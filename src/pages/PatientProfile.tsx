@@ -1505,20 +1505,23 @@ export function PatientProfile() {
       </div>
 
       <div className="md:hidden -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-        {sectionOptions.map((section) => (
-          <button
-            key={section.id}
-            onClick={() => updateSection(section.id)}
-            className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium whitespace-nowrap transition-all duration-200 ${
-              activeSection === section.id
-                ? 'border-primary bg-primary text-white shadow-sm'
-                : 'border-gray-200 bg-white text-text-secondary hover:border-primary/30 hover:text-primary'
-            }`}
-          >
-            <section.icon className="h-4 w-4" />
-            {section.label}
-          </button>
-        ))}
+        {mobileNavSections
+          .map((sectionId) => sectionOptions.find((section) => section.id === sectionId))
+          .filter((section): section is (typeof sectionOptions)[number] => Boolean(section))
+          .map((section) => (
+            <button
+              key={section.id}
+              onClick={() => updateSection(section.id)}
+              className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium whitespace-nowrap transition-all duration-200 ${
+                activeSection === section.id
+                  ? 'border-primary bg-primary text-white shadow-sm'
+                  : 'border-gray-200 bg-white text-text-secondary hover:border-primary/30 hover:text-primary'
+              }`}
+            >
+              <section.icon className="h-4 w-4" />
+              {section.label}
+            </button>
+          ))}
       </div>
 
       <div className="hidden md:grid grid-cols-2 xl:grid-cols-3 gap-4">
@@ -1542,7 +1545,8 @@ export function PatientProfile() {
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 px-4 py-3 backdrop-blur md:hidden">
         <div className="mx-auto flex max-w-xl gap-2">
           {mobileNavSections.map((sectionId) => {
-            const section = sectionOptions.find((item) => item.id === sectionId)!
+            const section = sectionOptions.find((item) => item.id === sectionId)
+            if (!section) return null
 
             return (
               <BottomNavButton
