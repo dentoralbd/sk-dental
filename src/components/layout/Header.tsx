@@ -21,6 +21,7 @@ export function Header({ onMenuClick }: HeaderProps) {
         <div className="flex items-center gap-4 flex-1 min-w-0">
           <button
             onClick={onMenuClick}
+            aria-label="Open menu"
             className="lg:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <Menu className="w-5 h-5" />

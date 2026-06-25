@@ -25,9 +25,9 @@
     font-size: 16px;
   }
   
-  /* Better touch targets */
-  button,
-  a {
+  /* Better touch targets for navigation/action buttons only */
+  button:not(.btn-compact):not([data-compact]),
+  a:not(.btn-compact):not([data-compact]) {
     min-height: 44px;
     min-width: 44px;
   }

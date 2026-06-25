@@ -3,6 +3,7 @@ import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { supabase } from '@/lib/supabase'
 import { formatBDT } from '@/lib/utils'
+import type { Database } from '@/lib/database.types'
 
 export function InvoiceModal({
   onClose,
@@ -15,7 +16,7 @@ export function InvoiceModal({
   defaultPatientId?: string
   hidePatientSelect?: boolean
 }) {
-  const [patients, setPatients] = useState<any[]>([])
+  const [patients, setPatients] = useState<Database['public']['Tables']['patients']['Row'][]>([])
   const [formData, setFormData] = useState({
     patient_id: defaultPatientId,
     due_date: '',
@@ -27,6 +28,7 @@ export function InvoiceModal({
   }])
   const [discountAmount, setDiscountAmount] = useState('')
   const [saving, setSaving] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   useEffect(() => {
     setFormData((prev) => ({ ...prev, patient_id: defaultPatientId || prev.patient_id }))
@@ -64,25 +66,58 @@ export function InvoiceModal({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    setErrorMessage(null)
+
+    const validItems = items.filter((item) => item.description.trim() && item.amount)
+    if (validItems.length === 0) {
+      setErrorMessage('Please add at least one item with a description and amount.')
+      return
+    }
+    if (validItems.length < items.length) {
+      const proceed = window.confirm(
+        `${items.length - validItems.length} item(s) with missing description or amount will be skipped. Continue?`
+      )
+      if (!proceed) return
+    }
+
     setSaving(true)
 
     try {
-      const invoicesTable: any = supabase.from('invoices')
-      const { error } = await invoicesTable.insert([{
+      const insertData: Database['public']['Tables']['invoices']['Insert'] = {
         patient_id: formData.patient_id,
-        items: items.filter((item) => item.description && item.amount),
+        items: validItems,
         total_amount: totalAmount,
         paid_amount: 0,
         discount_amount: discount,
         status: formData.status,
         due_date: formData.due_date || null,
-      }])
+      }
 
-      if (error) throw error
+      const { error } = await supabase.from('invoices').insert([insertData])
+
+      if (error) {
+        // If the column doesn't exist (migration not applied), retry without discount_amount
+        if (
+          error.message?.includes('discount_amount') &&
+          error.message?.includes('column')
+        ) {
+          console.warn('discount_amount column not found, retrying without it:', error.message)
+          const { discount_amount: _omit, ...insertWithoutDiscount } = insertData
+          const { error: retryError } = await supabase
+            .from('invoices')
+            .insert([insertWithoutDiscount as Database['public']['Tables']['invoices']['Insert']])
+          if (retryError) throw retryError
+          console.warn('Invoice saved without discount (run migration 007_add_invoice_discount.sql to enable discounts)')
+        } else {
+          throw error
+        }
+      }
+
       onSave()
-    } catch (error) {
-      console.error('Error creating invoice:', error)
-      alert('Failed to create invoice')
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.error('Error creating invoice:', err)
+      setErrorMessage(`Failed to create invoice: ${msg}`)
     } finally {
       setSaving(false)
     }
@@ -90,12 +125,17 @@ export function InvoiceModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full my-8">
+      <div className="modal-content bg-white rounded-lg shadow-xl max-w-2xl w-full my-4 sm:my-8">
         <div className="p-6 border-b border-gray-200">
           <h2 className="text-xl font-bold">New Invoice</h2>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {errorMessage && (
+            <div className="rounded-lg bg-red-50 border border-red-200 p-3 text-sm text-red-700">
+              {errorMessage}
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-4">
             {!hidePatientSelect && (
               <div>
