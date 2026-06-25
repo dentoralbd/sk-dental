@@ -62,7 +62,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
           <div className="p-4 border-t border-gray-200">
             <div className="text-xs text-text-secondary">
-              <p>Version 1.0.0</p>
+              <p>Version 1.0.1</p>
               <p className="mt-1">© 2026 ClinicMx</p>
             </div>
           </div>
