@@ -25,11 +25,13 @@
     font-size: 16px;
   }
   
-  /* Better touch targets */
-  button,
-  a {
-    min-height: 44px;
-    min-width: 44px;
+  /* Better touch targets - only on touch/pointer-coarse devices */
+  @media (hover: none) and (pointer: coarse) {
+    button,
+    a {
+      min-height: 44px;
+      min-width: 44px;
+    }
   }
 }
 

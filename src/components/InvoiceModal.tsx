@@ -67,10 +67,16 @@ export function InvoiceModal({
     setSaving(true)
 
     try {
-      const invoicesTable: any = supabase.from('invoices')
-      const { error } = await invoicesTable.insert([{
+      const validItems = items.filter((item) => item.description && item.amount)
+      if (validItems.length === 0) {
+        alert('Please add at least one item with a description and amount.')
+        setSaving(false)
+        return
+      }
+
+      const { error } = await supabase.from('invoices').insert([{
         patient_id: formData.patient_id,
-        items: items.filter((item) => item.description && item.amount),
+        items: validItems,
         total_amount: totalAmount,
         paid_amount: 0,
         discount_amount: discount,
@@ -82,7 +88,8 @@ export function InvoiceModal({
       onSave()
     } catch (error) {
       console.error('Error creating invoice:', error)
-      alert('Failed to create invoice')
+      const message = error instanceof Error ? error.message : String(error)
+      alert(`Failed to create invoice: ${message}`)
     } finally {
       setSaving(false)
     }
@@ -90,7 +97,7 @@ export function InvoiceModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full my-8">
+      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full sm:my-8 modal-content">
         <div className="p-6 border-b border-gray-200">
           <h2 className="text-xl font-bold">New Invoice</h2>
         </div>
