@@ -650,7 +650,7 @@ export function PatientProfile() {
           <InfoRow label="Address" value={patient.address || 'N/A'} />
         </InfoCard>
 
-        <div className="rounded-3xl bg-gradient-to-br from-primary via-[#1b4e70] to-slate-900 p-6 text-white shadow-sm">
+        <div className="rounded-3xl bg-gradient-to-br from-primary via-[#1b4e70] to-slate-900 p-4 sm:p-6 text-white shadow-sm">
           <p className="text-sm text-white/70">Financial dashboard</p>
           <div className="mt-2 text-3xl font-bold">{formatCurrency(totalDue)}</div>
           <p className="mt-1 text-sm text-white/80">Current balance due</p>
@@ -1513,17 +1513,17 @@ export function PatientProfile() {
         </div>
       </div>
 
-      <div className="rounded-3xl bg-gradient-to-br from-primary via-[#1b4e70] to-slate-900 p-6 text-white shadow-sm">
+      <div className="rounded-3xl bg-gradient-to-br from-primary via-[#1b4e70] to-slate-900 p-3 sm:p-6 text-white shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <p className="text-sm uppercase tracking-[0.2em] text-white/70">Patient dashboard</p>
-            <h2 className="mt-2 text-3xl font-semibold">{activeSectionMeta.label}</h2>
+            <h2 className="mt-2 text-xl sm:text-3xl font-semibold">{activeSectionMeta.label}</h2>
             <p className="mt-2 max-w-2xl text-sm text-white/80">{activeSectionMeta.description}</p>
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
             <HeroStat label="Balance" value={formatCurrency(totalDue)} />
             <HeroStat label="Next visit" value={upcomingAppointments[0] ? formatDateValue(upcomingAppointments[0].date_time, 'MMM d') : 'Not set'} />
-            <HeroStat label="Files" value={files.length.toString()} className="col-span-2 sm:col-span-1" />
+            <HeroStat label="Files" value={files.length.toString()} />
           </div>
         </div>
       </div>
@@ -1687,7 +1687,7 @@ function SectionMenuButton({ active, icon: Icon, label, description, badge, onCl
 
 function InfoCard({ title, children, className = '' }: any) {
   return (
-    <div className={`bg-card rounded-3xl shadow-sm border border-gray-200 p-6 ${className}`}>
+    <div className={`bg-card rounded-3xl shadow-sm border border-gray-200 p-4 sm:p-6 ${className}`}>
       <h3 className="font-semibold mb-4">{title}</h3>
       <div className="space-y-2">
         {children}
@@ -1747,13 +1747,13 @@ function BottomNavButton({ active, icon: Icon, label, onClick }: any) {
   return (
     <button
       onClick={onClick}
-      className={`flex min-w-0 flex-1 flex-col items-center gap-1 rounded-2xl px-3 py-2 text-xs font-medium transition-all duration-200 ${
+      className={`flex min-w-0 flex-1 flex-col items-center gap-1 rounded-2xl px-2 py-2.5 text-xs font-medium transition-all duration-200 ${
         active
           ? 'bg-primary text-white shadow-sm'
           : 'text-text-secondary hover:bg-gray-100 hover:text-text-primary'
       }`}
     >
-      <Icon className="h-4 w-4" />
+      <Icon className="h-5 w-5" />
       <span className="truncate">{label}</span>
     </button>
   )
