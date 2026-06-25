@@ -514,6 +514,25 @@ export function PatientProfile() {
     return colors[condition] || colors.Healthy
   }
 
+  // ── FDI dentition helpers ──────────────────────────────
+  function getPatientAge(dob: string | null | undefined): number | null {
+    if (!dob) return null
+    const birth = new Date(dob)
+    if (Number.isNaN(birth.getTime())) return null
+    const today = new Date()
+    let age = today.getFullYear() - birth.getFullYear()
+    const m = today.getMonth() - birth.getMonth()
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--
+    return age
+  }
+
+  function getDentitionType(age: number | null): 'deciduous' | 'mixed' | 'permanent' {
+    if (age === null || age > 16) return 'permanent'
+    if (age >= 5) return 'mixed'
+    return 'deciduous'
+  }
+  // ─────────────────────────────────────────────────────
+
   if (loading) {
     return (
       <div className="space-y-6 p-6 page-fade-in">
@@ -778,50 +797,107 @@ export function PatientProfile() {
     </div>
   )
 
-  const renderClinicalSection = () => (
-    <div className="space-y-6">
-      <div className="bg-card rounded-3xl shadow-sm border border-gray-200 p-6">
-        <h3 className="font-semibold mb-6 text-center">Dental Chart</h3>
-        <div className="space-y-8">
-          <div>
-            <h4 className="text-sm font-medium text-text-secondary mb-4 text-center">Upper Teeth</h4>
-            <div className="flex justify-center gap-2 flex-wrap">
-              {[...Array(16)].map((_, i) => {
-                const toothNum = i + 1
-                const condition = getToothCondition(toothNum)
-                return (
-                  <Tooth
-                    key={toothNum}
-                    number={toothNum}
-                    condition={condition}
-                    color={getToothColor(condition)}
-                    onClick={() => setSelectedTooth(toothNum)}
-                  />
-                )
-              })}
+  const renderClinicalSection = () => {
+    // FDI permanent quadrants (display order: distal → mesial)
+    const Q1 = [18, 17, 16, 15, 14, 13, 12, 11] // upper right
+    const Q2 = [21, 22, 23, 24, 25, 26, 27, 28] // upper left
+    const Q3 = [31, 32, 33, 34, 35, 36, 37, 38] // lower left
+    const Q4 = [48, 47, 46, 45, 44, 43, 42, 41] // lower right
+
+    // FDI primary quadrants (display order: distal → mesial)
+    const Q5 = [55, 54, 53, 52, 51] // upper right primary
+    const Q6 = [61, 62, 63, 64, 65] // upper left primary
+    const Q7 = [71, 72, 73, 74, 75] // lower left primary
+    const Q8 = [85, 84, 83, 82, 81] // lower right primary
+
+    const patientAge = getPatientAge(patient.date_of_birth)
+    const dentitionType = getDentitionType(patientAge)
+
+    const dentitionLabel: Record<typeof dentitionType, string> = {
+      deciduous: 'Deciduous dentition (primary teeth)',
+      mixed: 'Mixed dentition',
+      permanent: 'Permanent dentition',
+    }
+
+    const renderArch = (
+      leftQuadrant: number[],
+      rightQuadrant: number[],
+      label: string,
+      isPrimary = false,
+    ) => (
+      <div className="mb-1">
+        <p className="text-xs text-text-secondary text-center mb-1">{label}</p>
+        <div className="flex justify-center items-center gap-0.5">
+          <div className="flex gap-0.5">
+            {leftQuadrant.map((num) => {
+              const condition = getToothCondition(num)
+              return (
+                <Tooth
+                  key={num}
+                  number={num}
+                  condition={condition}
+                  color={getToothColor(condition)}
+                  onClick={() => setSelectedTooth(num)}
+                  small={isPrimary}
+                />
+              )
+            })}
+          </div>
+          <div className="w-px h-10 bg-gray-300 mx-1" />
+          <div className="flex gap-0.5">
+            {rightQuadrant.map((num) => {
+              const condition = getToothCondition(num)
+              return (
+                <Tooth
+                  key={num}
+                  number={num}
+                  condition={condition}
+                  color={getToothColor(condition)}
+                  onClick={() => setSelectedTooth(num)}
+                  small={isPrimary}
+                />
+              )
+            })}
+          </div>
+        </div>
+      </div>
+    )
+
+    return (
+      <div className="space-y-6">
+        <div className="bg-card rounded-3xl shadow-sm border border-gray-200 p-6">
+          <h3 className="font-semibold mb-1 text-center">Dental Chart</h3>
+          <p className="text-xs text-text-secondary text-center mb-5">
+            {patientAge !== null ? `Age ${patientAge} · ` : ''}{dentitionLabel[dentitionType]}
+          </p>
+
+          <div className="overflow-x-auto">
+            <div className="min-w-[360px]">
+              {/* Labels row */}
+              <div className="flex justify-between text-xs text-text-secondary mb-1 px-4">
+                <span>Patient's Right</span>
+                <span>Patient's Left</span>
+              </div>
+
+              {/* MAXILLA */}
+              <div className="mb-4">
+                <p className="text-xs font-medium text-center text-text-secondary mb-2 uppercase tracking-wide">Maxilla (Upper)</p>
+                {(dentitionType === 'permanent' || dentitionType === 'mixed') && renderArch(Q1, Q2, 'Permanent')}
+                {(dentitionType === 'deciduous' || dentitionType === 'mixed') && renderArch(Q5, Q6, dentitionType === 'mixed' ? 'Primary' : '', true)}
+              </div>
+
+              <div className="border-t border-dashed border-gray-300 my-3" />
+
+              {/* MANDIBLE */}
+              <div className="mt-4">
+                <p className="text-xs font-medium text-center text-text-secondary mb-2 uppercase tracking-wide">Mandible (Lower)</p>
+                {(dentitionType === 'deciduous' || dentitionType === 'mixed') && renderArch(Q8, Q7, dentitionType === 'mixed' ? 'Primary' : '', true)}
+                {(dentitionType === 'permanent' || dentitionType === 'mixed') && renderArch(Q4, Q3, 'Permanent')}
+              </div>
             </div>
           </div>
 
-          <div>
-            <h4 className="text-sm font-medium text-text-secondary mb-4 text-center">Lower Teeth</h4>
-            <div className="flex justify-center gap-2 flex-wrap">
-              {[...Array(16)].map((_, i) => {
-                const toothNum = i + 17
-                const condition = getToothCondition(toothNum)
-                return (
-                  <Tooth
-                    key={toothNum}
-                    number={toothNum}
-                    condition={condition}
-                    color={getToothColor(condition)}
-                    onClick={() => setSelectedTooth(toothNum)}
-                  />
-                )
-              })}
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-3 justify-center pt-4 border-t border-gray-200">
+          <div className="flex flex-wrap gap-3 justify-center pt-5 border-t border-gray-200 mt-6">
             <Legend color="fill-white stroke-gray-400" label="Healthy" />
             <Legend color="fill-red-200 stroke-red-500" label="Cavity" />
             <Legend color="fill-blue-200 stroke-blue-500" label="Filled" />
@@ -831,17 +907,17 @@ export function PatientProfile() {
             <Legend color="fill-green-200 stroke-green-500" label="Implant" />
           </div>
         </div>
-      </div>
 
-      <InfoCard title="Treatment Summary">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <MetricTile label="Total Treatments" value={treatments.length.toString()} />
-          <MetricTile label="Completed" value={treatments.filter((treatment) => treatment.status === 'Completed').length.toString()} />
-          <MetricTile label="In Progress" value={treatments.filter((treatment) => treatment.status === 'In Progress').length.toString()} />
-        </div>
-      </InfoCard>
-    </div>
-  )
+        <InfoCard title="Treatment Summary">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <MetricTile label="Total Treatments" value={treatments.length.toString()} />
+            <MetricTile label="Completed" value={treatments.filter((treatment) => treatment.status === 'Completed').length.toString()} />
+            <MetricTile label="In Progress" value={treatments.filter((treatment) => treatment.status === 'In Progress').length.toString()} />
+          </div>
+        </InfoCard>
+      </div>
+    )
+  }
 
   const renderVisitsSection = () => (
     <div className="bg-card rounded-3xl shadow-sm border border-gray-200">
@@ -1723,16 +1799,18 @@ function EmptyState({ message }: any) {
   return <p className="rounded-2xl bg-gray-50 p-4 text-sm text-text-secondary">{message}</p>
 }
 
-function Tooth({ number, condition, color, onClick }: any) {
+function Tooth({ number, condition, color, onClick, small }: any) {
+  const w = small ? 24 : 32
+  const h = small ? 36 : 48
   return (
     <div className="flex flex-col items-center cursor-pointer group" onClick={onClick} title={condition}>
-      <svg width="32" height="48" viewBox="0 0 32 48" className={`${color} group-hover:opacity-75 transition-opacity`}>
+      <svg width={w} height={h} viewBox="0 0 32 48" className={`${color} group-hover:opacity-75 transition-opacity`}>
         <path
           d="M16 2 C10 2, 6 6, 6 12 C6 18, 8 24, 10 32 C11 36, 12 42, 16 46 C20 42, 21 36, 22 32 C24 24, 26 18, 26 12 C26 6, 22 2, 16 2 Z"
           strokeWidth="2"
         />
       </svg>
-      <span className="text-xs font-medium mt-1">{number}</span>
+      <span className="text-xs font-medium mt-0.5" style={{ fontSize: small ? '9px' : undefined }}>{number}</span>
     </div>
   )
 }
@@ -2323,14 +2401,14 @@ function TreatmentPlanModal({ formData, setFormData, onSubmit, onClose }: any) {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Tooth Number</label>
+              <label className="block text-sm font-medium mb-1">Tooth Number (FDI)</label>
               <input
                 type="number"
-                min="1"
-                max="32"
+                min="11"
+                max="85"
                 value={formData.tooth_number}
                 onChange={(e) => setFormData({ ...formData, tooth_number: e.target.value })}
-                placeholder="1–32 (optional)"
+                placeholder="e.g. 11–48, 51–85"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
