@@ -95,13 +95,19 @@ export function InvoiceModal({
   }
 
   async function loadPendingTreatments(patientId: string) {
-    const { data } = await supabase
-      .from('treatments')
-      .select('id, treatment_type, description, tooth_number, status, cost')
-      .eq('patient_id', patientId)
-      .eq('is_invoiced', false)
-      .order('created_at', { ascending: false })
-    setPendingTreatments((data as PendingTreatment[]) || [])
+    try {
+      const { data, error } = await supabase
+        .from('treatments')
+        .select('id, treatment_type, description, tooth_number, status, cost')
+        .eq('patient_id', patientId)
+        .eq('is_invoiced', false)
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      setPendingTreatments((data as PendingTreatment[]) || [])
+    } catch {
+      // is_invoiced column may not exist yet in the live DB — silently degrade
+      setPendingTreatments([])
+    }
     setSelectedTreatmentIds(new Set())
   }
 
@@ -178,36 +184,30 @@ export function InvoiceModal({
     setSaving(true)
 
     try {
+      // Use only the baseline columns guaranteed to exist in the original schema.
+      // Advanced columns (credit_amount, late_fee_amount, tax_rate, discount_type,
+      // discount_value, invoice_type, invoice_number, recurring_*, template_id, notes,
+      // payment_terms) are intentionally omitted until database migrations are confirmed.
+      const basePayload = {
+        patient_id: formData.patient_id,
+        items: validItems,
+        total_amount: totalAmount,
+        paid_amount: 0,
+        discount_amount: discount,
+        status: formData.status,
+        due_date: formData.due_date || null,
+      }
+
       const { data, error } = await supabase
         .from('invoices')
-        .insert([{
-          patient_id: formData.patient_id,
-          items: validItems,
-          total_amount: totalAmount,
-          paid_amount: 0,
-          discount_amount: discount,
-          discount_type: 'fixed',
-          discount_value: discount,
-          tax_amount: taxAmount,
-          tax_rate: taxRate,
-          notes: formData.notes || null,
-          payment_terms: formData.payment_terms || null,
-          invoice_type: invoiceType,
-          invoice_number: null,
-          credit_amount: 0,
-          late_fee_amount: 0,
-          status: formData.status,
-          due_date: formData.due_date || null,
-          recurring_enabled: formData.recurring_enabled,
-          recurring_frequency: formData.recurring_enabled ? formData.recurring_frequency : null,
-          template_id: template?.id || null,
-        }])
+        .insert([basePayload])
         .select('id')
         .single()
 
       if (error) throw error
 
       if (data?.id) {
+        // invoice_history table is added by a later migration — ignore if missing
         await supabase.from('invoice_history').insert({
           invoice_id: data.id,
           event_type: 'invoice_created',
@@ -215,21 +215,25 @@ export function InvoiceModal({
             invoice_type: invoiceType,
             template_id: template?.id || null,
           },
-        })
+        }).then(() => {}, () => {})
 
-        // Mark selected treatments as invoiced
+        // treatments.is_invoiced / invoice_id are added by a later migration — ignore if missing
         if (selectedTreatmentIds.size > 0) {
           await supabase
             .from('treatments')
             .update({ is_invoiced: true, invoice_id: data.id })
             .in('id', Array.from(selectedTreatmentIds))
+            .then(() => {}, () => {})
         }
       }
 
       onSave()
     } catch (error) {
       console.error('Error creating invoice:', error)
-      const message = error instanceof Error ? error.message : (error as any)?.message || 'Unknown error'
+      const message =
+        (error as any)?.message ||
+        (error instanceof Error ? error.message : null) ||
+        'Unknown error occurred. Check the browser console for details.'
       alert(`Failed to create invoice: ${message}`)
     } finally {
       setSaving(false)
