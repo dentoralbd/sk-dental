@@ -119,6 +119,9 @@ export function InvoiceModal({
           notes: formData.notes || null,
           payment_terms: formData.payment_terms || null,
           invoice_type: invoiceType,
+          invoice_number: null,
+          credit_amount: 0,
+          late_fee_amount: 0,
           status: formData.status,
           due_date: formData.due_date || null,
           recurring_enabled: formData.recurring_enabled,
@@ -144,7 +147,7 @@ export function InvoiceModal({
       onSave()
     } catch (error) {
       console.error('Error creating invoice:', error)
-      const message = error instanceof Error ? error.message : 'Unknown error'
+      const message = error instanceof Error ? error.message : (error as any)?.message || 'Unknown error'
       alert(`Failed to create invoice: ${message}`)
     } finally {
       setSaving(false)
