@@ -1,5 +1,6 @@
 import { Bell, Search, User, Menu, LogOut } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import clinicConfig from '@/config/clinic.json'
 
 interface HeaderProps {
   onMenuClick: () => void
@@ -11,7 +12,7 @@ export function Header({ onMenuClick }: HeaderProps) {
   const navigate = useNavigate()
 
   function handleLogout() {
-    localStorage.removeItem('clinicmx_auth')
+    localStorage.removeItem(clinicConfig.storageKeys.auth)
     navigate('/login')
   }
 

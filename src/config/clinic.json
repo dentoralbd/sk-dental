@@ -1,0 +1,27 @@
+{
+  "name": "SK Dental",
+  "managementLabel": "Dental Management",
+  "tagline": "Your Smile, Our Priority",
+  "appTitle": "SK Dental - Dental Clinic Management",
+  "logoPath": "/sk-dental-logo.svg",
+  "storageKeys": {
+    "auth": "sk_dental_auth",
+    "localMedications": "sk_dental_local_medications",
+    "localInvestigations": "sk_dental_local_investigations"
+  },
+  "theme": {
+    "border": "#D8E6FF",
+    "primary": "#0F52BA",
+    "primaryHover": "#0B3F91",
+    "secondary": "#3B82F6",
+    "secondaryHover": "#2563EB",
+    "accent": "#93C5FD",
+    "success": "#2563EB",
+    "warning": "#E8A33D",
+    "error": "#D2554A",
+    "background": "#EFF6FF",
+    "card": "#FFFFFF",
+    "textPrimary": "#102A43",
+    "textSecondary": "#486581"
+  }
+}

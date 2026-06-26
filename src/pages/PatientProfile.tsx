@@ -10,6 +10,7 @@ import { buildInvoiceItemPreview, extractTreatmentIdsFromInvoiceItems, formatInv
 import { supabase } from '@/lib/supabase'
 import { format } from 'date-fns'
 import { formatBDT } from '@/lib/utils'
+import clinicConfig from '@/config/clinic.json'
 
 type SectionId =
   | 'profile'
@@ -82,8 +83,8 @@ function getInvoiceDue(invoice: any) {
 }
 
 // ─── SESSION MEMORY HELPERS ───────────────────────────
-const LOCAL_MEDS_KEY = 'clinicmx_local_medications'
-const LOCAL_INVS_KEY = 'clinicmx_local_investigations'
+const LOCAL_MEDS_KEY = clinicConfig.storageKeys.localMedications
+const LOCAL_INVS_KEY = clinicConfig.storageKeys.localInvestigations
 const inMemoryMeds: any[] = []
 const inMemoryInvs: any[] = []
 

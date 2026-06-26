@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Lock } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import clinicConfig from '@/config/clinic.json'
 
 export function Login() {
   const [password, setPassword] = useState('')
@@ -18,7 +19,7 @@ export function Login() {
     await new Promise((r) => setTimeout(r, 400))
 
     if (password === '6040') {
-      localStorage.setItem('clinicmx_auth', 'true')
+      localStorage.setItem(clinicConfig.storageKeys.auth, 'true')
       navigate('/dashboard')
     } else {
       setError('Incorrect password')
@@ -33,11 +34,11 @@ export function Login() {
     <div className="min-h-screen bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center p-4">
       <div className={`bg-white rounded-2xl shadow-xl p-8 w-full max-w-md ${shake ? 'shake' : ''}`}>
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/10 rounded-full mb-4">
-            <Lock className="w-8 h-8 text-primary" />
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-primary/10 rounded-full mb-4 overflow-hidden">
+            <img src={clinicConfig.logoPath} alt={`${clinicConfig.name} logo`} className="h-14 w-14 object-contain" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">ClinicMx</h1>
-          <p className="text-text-secondary">Dental Clinic Management</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">{clinicConfig.name}</h1>
+          <p className="text-text-secondary">{clinicConfig.tagline}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -78,10 +79,12 @@ export function Login() {
         </form>
 
         <div className="mt-6 text-center text-sm text-text-secondary">
-          <p>Secure access for authorized users only</p>
+          <p className="inline-flex items-center gap-2">
+            <Lock className="w-4 h-4 text-primary" />
+            Secure access for authorized users only
+          </p>
         </div>
       </div>
     </div>
   )
 }
-

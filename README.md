@@ -1,4 +1,4 @@
-# ClinicMx Web - Dental Clinic Management System
+# SK Dental - Dental Clinic Management System
 
 🦷 **Modern web-based dental clinic management application**
 
@@ -22,7 +22,7 @@
 
 ## 🌐 Live Site
 
-https://clinicmx-web.pages.dev/
+Deploy this app to your preferred hosting provider after configuring the environment variables below.
 
 ## 📱 Mobile Friendly
 
@@ -57,4 +57,4 @@ Required in Cloudflare Pages:
 
 ---
 
-**Built with ❤️ for dental clinics**
+**Built with ❤️ for SK Dental**
