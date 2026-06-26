@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/Button'
+import { LEGACY_INVOICE_INSERT_FIELDS, buildLegacyInvoiceInsertPayload } from '@/lib/invoicePayload'
 import { supabase } from '@/lib/supabase'
 import { formatBDT } from '@/lib/utils'
 import type { InvoiceTemplateData } from '@/components/InvoiceTemplateSelector'
@@ -81,25 +82,21 @@ export function AdvancedInvoiceModal({ onClose, onSave, defaultPatientId = '', t
 
     setSaving(true)
 
+    let attemptedPayload: ReturnType<typeof buildLegacyInvoiceInsertPayload> | null = null
+
     try {
-      // Use only the baseline columns guaranteed to exist in the original schema.
-      // Advanced columns (credit_amount, discount_type, discount_value, tax_amount,
-      // tax_rate, notes, payment_terms, invoice_number, invoice_type, recurring_*,
-      // template_id) are intentionally omitted until database migrations are confirmed.
-      // The credit and discount are already factored into totalAmount / discountAmount.
-      const basePayload = {
+      attemptedPayload = buildLegacyInvoiceInsertPayload({
         patient_id: formData.patient_id,
         items: validItems,
         total_amount: totalAmount,
         paid_amount: 0,
-        discount_amount: discountAmount,
         status: 'Pending',
         due_date: formData.due_date || null,
-      }
+      })
 
       const { data, error } = await supabase
         .from('invoices')
-        .insert(basePayload)
+        .insert(attemptedPayload)
         .select('id')
         .single()
 
@@ -135,12 +132,16 @@ export function AdvancedInvoiceModal({ onClose, onSave, defaultPatientId = '', t
 
       onSave()
     } catch (error) {
-      console.error('Error creating advanced invoice:', error)
+      console.error('Error creating advanced invoice with legacy payload:', {
+        payloadFields: LEGACY_INVOICE_INSERT_FIELDS,
+        payload: attemptedPayload,
+        error,
+      })
       const message =
         (error as any)?.message ||
         (error instanceof Error ? error.message : null) ||
         'Unknown error occurred. Check the browser console for details.'
-      alert(`Failed to create advanced invoice: ${message}`)
+      alert(`Failed to create advanced invoice using legacy-safe payload: ${message}`)
     } finally {
       setSaving(false)
     }
