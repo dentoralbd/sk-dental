@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { CheckSquare, ChevronDown, ChevronUp, Plus, Square } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { supabase } from '@/lib/supabase'
+import { LEGACY_INVOICE_INSERT_FIELDS, buildLegacyInvoiceInsertPayload } from '@/lib/invoicePayload'
 import { formatBDT } from '@/lib/utils'
 import type { InvoiceTemplateData } from '@/components/InvoiceTemplateSelector'
 
@@ -183,24 +184,21 @@ export function InvoiceModal({
 
     setSaving(true)
 
+    let attemptedPayload: ReturnType<typeof buildLegacyInvoiceInsertPayload> | null = null
+
     try {
-      // Use only the baseline columns guaranteed to exist in the original schema.
-      // Advanced columns (credit_amount, late_fee_amount, tax_rate, discount_type,
-      // discount_value, invoice_type, invoice_number, recurring_*, template_id, notes,
-      // payment_terms) are intentionally omitted until database migrations are confirmed.
-      const basePayload = {
+      attemptedPayload = buildLegacyInvoiceInsertPayload({
         patient_id: formData.patient_id,
         items: validItems,
         total_amount: totalAmount,
         paid_amount: 0,
-        discount_amount: discount,
         status: formData.status,
         due_date: formData.due_date || null,
-      }
+      })
 
       const { data, error } = await supabase
         .from('invoices')
-        .insert([basePayload])
+        .insert([attemptedPayload])
         .select('id')
         .single()
 
@@ -229,12 +227,16 @@ export function InvoiceModal({
 
       onSave()
     } catch (error) {
-      console.error('Error creating invoice:', error)
+      console.error('Error creating invoice with legacy payload:', {
+        payloadFields: LEGACY_INVOICE_INSERT_FIELDS,
+        payload: attemptedPayload,
+        error,
+      })
       const message =
         (error as any)?.message ||
         (error instanceof Error ? error.message : null) ||
         'Unknown error occurred. Check the browser console for details.'
-      alert(`Failed to create invoice: ${message}`)
+      alert(`Failed to create invoice using legacy-safe payload: ${message}`)
     } finally {
       setSaving(false)
     }
@@ -499,4 +501,3 @@ export function InvoiceModal({
     </div>
   )
 }
-
