@@ -1,27 +1,29 @@
+const clinicConfig = require('./src/config/clinic.json')
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
       colors: {
-        border: '#E2E8F0',
+        border: clinicConfig.theme.border,
         primary: {
-          DEFAULT: '#0D9488',
-          hover: '#0F766E',
+          DEFAULT: clinicConfig.theme.primary,
+          hover: clinicConfig.theme.primaryHover,
         },
         highlight: {
-          DEFAULT: '#E91E8C',
-          hover: '#C7186F',
+          DEFAULT: clinicConfig.theme.secondary,
+          hover: clinicConfig.theme.secondaryHover,
         },
-        accent: '#F2876B',
-        success: '#2E9E83',
-        warning: '#E8A33D',
-        error: '#D2554A',
-        background: '#F0FDFB',
-        card: '#FFFFFF',
+        accent: clinicConfig.theme.accent,
+        success: clinicConfig.theme.success,
+        warning: clinicConfig.theme.warning,
+        error: clinicConfig.theme.error,
+        background: clinicConfig.theme.background,
+        card: clinicConfig.theme.card,
         text: {
-          primary: '#1B2733',
-          secondary: '#5A7184',
+          primary: clinicConfig.theme.textPrimary,
+          secondary: clinicConfig.theme.textSecondary,
         },
       },
     },

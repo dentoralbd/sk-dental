@@ -1,7 +1,7 @@
 # Google Integration Setup Guide
 
 This guide walks you through enabling the optional Google Drive + Google Sheets
-hybrid integration for Clinicmx-web.  The integration is **additive** — your
+hybrid integration for SK Dental. The integration is **additive** — your
 existing Supabase setup continues to work even if you skip this entirely.
 
 ---
@@ -27,7 +27,7 @@ existing Supabase setup continues to work even if you skip this entirely.
 
 1. Open [Google Cloud Console](https://console.cloud.google.com).
 2. Click the project selector drop-down at the top and choose **New Project**.
-3. Give it a name (e.g. `clinicmx-integration`) and click **Create**.
+3. Give it a name (e.g. `sk-dental-integration`) and click **Create**.
 
 ---
 
@@ -44,7 +44,7 @@ existing Supabase setup continues to work even if you skip this entirely.
 
 1. Go to **APIs & Services > Credentials**.
 2. Click **+ Create Credentials > Service account**.
-3. Fill in a name (e.g. `clinicmx-service`) and click **Create and Continue**.
+3. Fill in a name (e.g. `sk-dental-service`) and click **Create and Continue**.
 4. Grant the role **Editor** (or narrow it to the two APIs above) and click
    **Continue**, then **Done**.
 
@@ -65,7 +65,7 @@ The file looks like:
   "project_id": "...",
   "private_key_id": "...",
   "private_key": "-----BEGIN PRIVATE KEY-----\nMIIE...\n-----END PRIVATE KEY-----\n",
-  "client_email": "clinicmx-service@your-project.iam.gserviceaccount.com",
+  "client_email": "sk-dental-service@your-project.iam.gserviceaccount.com",
   ...
 }
 ```
@@ -79,7 +79,7 @@ You need two values from this file:
 ## Step 5 — Set up Google Drive
 
 1. Open [Google Drive](https://drive.google.com) in your browser.
-2. Create a new folder, e.g. **"ClinicMx Patient Files"**.
+2. Create a new folder, e.g. **"SK Dental Patient Files"**.
 3. Right-click the folder > **Share**.
 4. Paste the service account email (from the JSON key `client_email` field)
    and give it **Editor** access.  Click **Send** (ignore the "external user"
@@ -95,7 +95,7 @@ You need two values from this file:
 ## Step 6 — Set up Google Sheets
 
 1. Open [Google Sheets](https://sheets.google.com) and create a new spreadsheet
-   named **"ClinicMx Backup"** (or any name you prefer).
+   named **"SK Dental Backup"** (or any name you prefer).
 2. Rename the first tab to **`Appointments`**.
 3. Add a second tab named **`Patients`**.
 4. Share the spreadsheet with the service account email (Editor access) the same
@@ -115,7 +115,7 @@ You need two values from this file:
 Copy `.env.example` to `.env` and fill in the four new Google variables:
 
 ```env
-VITE_GOOGLE_SERVICE_ACCOUNT_EMAIL=clinicmx-service@your-project.iam.gserviceaccount.com
+VITE_GOOGLE_SERVICE_ACCOUNT_EMAIL=sk-dental-service@your-project.iam.gserviceaccount.com
 VITE_GOOGLE_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\nMIIE...\n-----END PRIVATE KEY-----\n
 VITE_GOOGLE_DRIVE_FOLDER_ID=1AbCdEfGhIjKlMnOpQrStUvWxYz
 VITE_GOOGLE_SPREADSHEET_ID=1BxCdEfGhIjKlMnOpQrStUvWxYz

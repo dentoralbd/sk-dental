@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import { LayoutDashboard, Users, Calendar, FileText, DollarSign, Package, X } from 'lucide-react'
+import clinicConfig from '@/config/clinic.json'
 
 interface SidebarProps {
   isOpen: boolean
@@ -36,9 +37,12 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       >
         <div className="flex flex-col h-full">
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
-            <div>
-              <h1 className="text-2xl font-bold text-primary">ClinicMx</h1>
-              <p className="text-sm text-text-secondary">Dental Management</p>
+            <div className="flex items-center gap-3">
+              <img src={clinicConfig.logoPath} alt={`${clinicConfig.name} logo`} className="h-12 w-12 rounded-2xl object-contain bg-primary/5 p-1.5" />
+              <div>
+                <h1 className="text-2xl font-bold text-primary">{clinicConfig.name}</h1>
+                <p className="text-sm text-text-secondary">{clinicConfig.managementLabel}</p>
+              </div>
             </div>
             <button
               onClick={onClose}
@@ -72,7 +76,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           <div className="p-4 border-t border-gray-200">
             <div className="text-xs text-text-secondary">
               <p>Version 1.0.1</p>
-              <p className="mt-1">© 2026 ClinicMx</p>
+              <p className="mt-1">© 2026 {clinicConfig.name}</p>
             </div>
           </div>
         </div>
