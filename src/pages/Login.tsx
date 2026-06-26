@@ -18,7 +18,7 @@ export function Login() {
     // brief delay for perceived security
     await new Promise((r) => setTimeout(r, 400))
 
-    if (password === '6040') {
+    if (password === '6307') {
       localStorage.setItem(clinicConfig.storageKeys.auth, 'true')
       navigate('/dashboard')
     } else {
