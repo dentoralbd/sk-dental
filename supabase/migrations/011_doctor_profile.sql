@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS doctor_profiles (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid REFERENCES auth.users(id),
+  user_id uuid UNIQUE REFERENCES auth.users(id),
   full_name text NOT NULL DEFAULT '',
   degrees text NOT NULL DEFAULT '',
   designation text NOT NULL DEFAULT '',
