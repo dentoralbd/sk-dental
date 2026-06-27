@@ -127,3 +127,37 @@
   border-radius: 0.375rem;
   animation: skeleton-pulse 1.4s ease-in-out infinite, shimmer 1.8s linear infinite;
 }
+
+/* ── Print styles for prescriptions ── */
+@media print {
+  body {
+    background: #fff !important;
+  }
+  body * {
+    visibility: hidden !important;
+  }
+  .prescription-print-overlay,
+  .prescription-print-overlay * {
+    visibility: visible !important;
+  }
+  .prescription-print-overlay {
+    position: absolute !important;
+    inset: 0 !important;
+    display: block !important;
+    overflow: visible !important;
+    background: #fff !important;
+    padding: 0 !important;
+  }
+  #prescription-print-root {
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+  }
+  .prescription-print-container {
+    margin: 0;
+    padding: 20px;
+    font-family: 'Times New Roman', Times, serif;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+}

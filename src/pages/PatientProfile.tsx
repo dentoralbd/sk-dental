@@ -1,13 +1,31 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Plus, Calendar as CalendarIcon, FileText, Activity, DollarSign, Pill, Trash2, Lightbulb, Pencil, Upload, Image, X, User, FolderOpen, MessageSquare } from 'lucide-react'
+import { ArrowLeft, Plus, Calendar as CalendarIcon, FileText, Activity, DollarSign, Pill, Trash2, Lightbulb, Pencil, Upload, Image, X, User, FolderOpen, MessageSquare, FlaskConical, CheckCircle, Stethoscope, Printer } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { AppointmentModal } from '@/components/AppointmentModal'
 import { InvoiceModal } from '@/components/InvoiceModal'
 import { PaymentEntryModal } from '@/components/PaymentEntryModal'
 import { PaymentHistoryPanel } from '@/components/PaymentHistoryPanel'
+import { PrescriptionPrint } from '@/components/PrescriptionPrint'
 import { buildInvoiceItemPreview, extractTreatmentIdsFromInvoiceItems, formatInvoiceItemLabel, getInvoiceItemLineTotal, getInvoiceItemSubtotal } from '@/lib/billing'
 import { supabase } from '@/lib/supabase'
+import { MEMORY_KEYS, rememberItem, getMemory } from '@/lib/prescriptionMemory'
+import { loadDoctorProfile as loadSavedDoctorProfile } from '@/lib/doctorProfile'
+import {
+  getComplaintTemplates,
+  getExaminationTemplates,
+  getFilledInvestigationItems,
+  getFilledMedicationItems,
+  getInvestigationSectionTemplates,
+  getMedicationSectionTemplates,
+  saveComplaintTemplate,
+  saveExaminationTemplate,
+  saveInvestigationSectionTemplate,
+  saveMedicationSectionTemplate,
+  type InvestigationTemplateItem,
+  type MedicationTemplateItem,
+  type SectionTemplate,
+} from '@/lib/prescriptionSectionTemplates'
 import { format } from 'date-fns'
 import { formatBDT } from '@/lib/utils'
 import clinicConfig from '@/config/clinic.json'
@@ -21,6 +39,7 @@ type SectionId =
   | 'forms'
   | 'bookings'
   | 'treatment'
+  | 'operations'
   | 'visits'
   | 'investigations'
   | 'files'
@@ -161,11 +180,16 @@ export function PatientProfile() {
   })
 
   const [prescriptionForm, setPrescriptionForm] = useState({
+    chief_complaint: '',
+    on_examination: '',
     diagnosis: '',
     medications: [{ name: '', dosage: '', frequency: '', duration: '', instructions: '' }],
     investigations: [{ name: '', description: '' }],
     notes: '',
   })
+
+  const [printingPrescription, setPrintingPrescription] = useState<any | null>(null)
+  const [doctorProfile, setDoctorProfile] = useState<any | null>(null)
 
   useEffect(() => {
     if (id) {
@@ -174,6 +198,7 @@ export function PatientProfile() {
     }
     setLocalMeds(getLocalItems(LOCAL_MEDS_KEY))
     setLocalInvs(getLocalItems(LOCAL_INVS_KEY))
+    loadDoctorProfile()
   }, [id])
 
   async function loadPatientData() {
@@ -258,6 +283,15 @@ export function PatientProfile() {
     setInvestigationTemplates(invTemplates || [])
   }
 
+  async function loadDoctorProfile() {
+    try {
+      const data = await loadSavedDoctorProfile()
+      if (data) setDoctorProfile(data)
+    } catch {
+      // silently ignore
+    }
+  }
+
   async function saveToothCondition(toothNumber: number, condition: string, notes: string) {
     if (!id) return
 
@@ -340,9 +374,11 @@ export function PatientProfile() {
     if (!id) return
 
     try {
-      const payload = {
+      const payload: any = {
         patient_id: id,
         prescribed_date: format(new Date(), 'yyyy-MM-dd'),
+        chief_complaint: prescriptionForm.chief_complaint,
+        on_examination: prescriptionForm.on_examination,
         diagnosis: prescriptionForm.diagnosis,
         medications: prescriptionForm.medications.filter(m => m.name.trim()),
         investigations: prescriptionForm.investigations.filter(i => i.name.trim()),
@@ -354,6 +390,7 @@ export function PatientProfile() {
       } else {
         await supabase.from('prescriptions').insert([payload])
 
+        // Save to session memory (legacy in-memory)
         for (const med of prescriptionForm.medications) {
           if (med.name.trim()) saveLocalItem(LOCAL_MEDS_KEY, med)
         }
@@ -362,6 +399,31 @@ export function PatientProfile() {
         }
         setLocalMeds(getLocalItems(LOCAL_MEDS_KEY))
         setLocalInvs(getLocalItems(LOCAL_INVS_KEY))
+
+        // Save to localStorage-based smart memory
+        if (prescriptionForm.chief_complaint.trim()) rememberItem(MEMORY_KEYS.COMPLAINTS, prescriptionForm.chief_complaint)
+        if (prescriptionForm.on_examination.trim()) rememberItem(MEMORY_KEYS.EXAMINATIONS, prescriptionForm.on_examination)
+        for (const med of prescriptionForm.medications) {
+          if (med.name.trim()) rememberItem(MEMORY_KEYS.MEDICATIONS, med.name)
+        }
+        for (const inv of prescriptionForm.investigations) {
+          if (inv.name.trim()) rememberItem(MEMORY_KEYS.INVESTIGATIONS, inv.name)
+        }
+
+        // Auto-save visit record if CC or OE is provided
+        if (prescriptionForm.chief_complaint.trim() || prescriptionForm.on_examination.trim()) {
+          try {
+            await supabase.from('patient_visits').insert([{
+              patient_id: id,
+              visit_date: new Date().toISOString(),
+              chief_complaint: prescriptionForm.chief_complaint || '',
+              examination_findings: prescriptionForm.on_examination || '',
+              diagnosis: prescriptionForm.diagnosis || '',
+            }])
+          } catch {
+            // non-fatal – visit record is optional
+          }
+        }
       }
 
       setShowPrescriptionForm(false)
@@ -369,6 +431,8 @@ export function PatientProfile() {
       setShowMedTemplates(false)
       setShowInvTemplates(false)
       setPrescriptionForm({
+        chief_complaint: '',
+        on_examination: '',
         diagnosis: '',
         medications: [{ name: '', dosage: '', frequency: '', duration: '', instructions: '' }],
         investigations: [{ name: '', description: '' }],
@@ -385,6 +449,8 @@ export function PatientProfile() {
   function startEditPrescription(prescription: any) {
     setEditingPrescriptionId(prescription.id)
     setPrescriptionForm({
+      chief_complaint: prescription.chief_complaint || '',
+      on_examination: prescription.on_examination || '',
       diagnosis: prescription.diagnosis || '',
       medications:
         Array.isArray(prescription.medications) && prescription.medications.length > 0
@@ -920,6 +986,96 @@ export function PatientProfile() {
             <MetricTile label="In Progress" value={treatments.filter((treatment) => treatment.status === 'In Progress').length.toString()} />
           </div>
         </InfoCard>
+
+        {/* Clinical Consultation History — CC and O/E from prescriptions */}
+        {(visits.length > 0 || prescriptions.some(p => p.chief_complaint || p.on_examination)) && (
+          <div className="bg-card rounded-3xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="font-semibold">Clinical Consultation History</h3>
+                <p className="text-xs text-text-secondary mt-0.5">Chief complaints and examination findings from prescriptions</p>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => updateSection('prescriptions')}>
+                View Prescriptions
+              </Button>
+            </div>
+            {prescriptions.filter(p => p.chief_complaint || p.on_examination).length === 0 &&
+             visits.filter(v => v.chief_complaint || v.examination_findings).length === 0 ? (
+              <EmptyState message="No clinical findings recorded yet. Add CC and O/E when writing a prescription." />
+            ) : (
+              <div className="space-y-3">
+                {/* Show from prescriptions (most recent 5) */}
+                {prescriptions
+                  .filter(p => p.chief_complaint || p.on_examination)
+                  .slice(0, 5)
+                  .map((prescription) => (
+                    <div key={prescription.id} className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-semibold text-gray-700">
+                          {formatDateValue(prescription.prescribed_date, 'MMMM d, yyyy')}
+                        </span>
+                        {prescription.diagnosis && (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-800 text-xs font-medium border border-blue-200">
+                            {prescription.diagnosis.length > 40 ? prescription.diagnosis.slice(0, 40) + '…' : prescription.diagnosis}
+                          </span>
+                        )}
+                      </div>
+                      <div className="space-y-1.5">
+                        {prescription.chief_complaint && (
+                          <div className="flex items-start gap-2 text-sm">
+                            <span className="flex-shrink-0 font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded text-xs">CC</span>
+                            <span className="text-gray-700">{prescription.chief_complaint}</span>
+                          </div>
+                        )}
+                        {prescription.on_examination && (
+                          <div className="flex items-start gap-2 text-sm">
+                            <span className="flex-shrink-0 font-semibold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded text-xs">O/E</span>
+                            <span className="text-gray-700">{prescription.on_examination}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                {/* Also show from manually-entered visits that have clinical data */}
+                {visits
+                  .filter(v => v.chief_complaint || v.examination_findings)
+                  .filter(v => !prescriptions.some(p =>
+                    p.chief_complaint === v.chief_complaint &&
+                    formatDateValue(p.prescribed_date) === formatDateValue(v.visit_date)
+                  ))
+                  .slice(0, 3)
+                  .map((visit) => (
+                    <div key={visit.id} className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-semibold text-gray-700">
+                          {formatDateValue(visit.visit_date, 'MMMM d, yyyy')}
+                        </span>
+                        {visit.diagnosis && (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-800 text-xs font-medium border border-blue-200">
+                            {visit.diagnosis.length > 40 ? visit.diagnosis.slice(0, 40) + '…' : visit.diagnosis}
+                          </span>
+                        )}
+                      </div>
+                      <div className="space-y-1.5">
+                        {visit.chief_complaint && (
+                          <div className="flex items-start gap-2 text-sm">
+                            <span className="flex-shrink-0 font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded text-xs">CC</span>
+                            <span className="text-gray-700">{visit.chief_complaint}</span>
+                          </div>
+                        )}
+                        {visit.examination_findings && (
+                          <div className="flex items-start gap-2 text-sm">
+                            <span className="flex-shrink-0 font-semibold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded text-xs">O/E</span>
+                            <span className="text-gray-700">{visit.examination_findings}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     )
   }
@@ -1029,7 +1185,7 @@ export function PatientProfile() {
     <div className="bg-card rounded-3xl shadow-sm border border-gray-200">
       <div className="p-4 border-b border-gray-200 flex justify-between items-center">
         <h3 className="font-semibold">Prescription History</h3>
-        <Button size="sm" onClick={() => { setEditingPrescriptionId(null); setPrescriptionForm({ diagnosis: '', medications: [{ name: '', dosage: '', frequency: '', duration: '', instructions: '' }], investigations: [{ name: '', description: '' }], notes: '' }); setShowPrescriptionForm(true) }}>
+        <Button size="sm" onClick={() => { setEditingPrescriptionId(null); setPrescriptionForm({ chief_complaint: '', on_examination: '', diagnosis: '', medications: [{ name: '', dosage: '', frequency: '', duration: '', instructions: '', route: '' } as any], investigations: [{ name: '', description: '', urgency: 'Routine' } as any], notes: '' }); setShowPrescriptionForm(true) }}>
           <Plus className="w-4 h-4 mr-1" />
           Add Prescription
         </Button>
@@ -1037,12 +1193,30 @@ export function PatientProfile() {
       {prescriptions.length === 0 ? (
         <div className="p-8 text-center text-text-secondary">No prescriptions recorded</div>
       ) : (
-        <div className="divide-y divide-gray-200">
+        <div className="p-4 space-y-4">
           {prescriptions.map((prescription) => (
-            <div key={prescription.id} className="p-4">
+            <div key={prescription.id} className="rounded-2xl border border-gray-200 shadow-sm bg-white p-5">
               <div className="flex items-center justify-between mb-3">
-                <div className="font-medium">{formatDateValue(prescription.prescribed_date, 'MMMM d, yyyy')}</div>
+                <div className="font-bold text-gray-800">{formatDateValue(prescription.prescribed_date, 'MMMM d, yyyy')}</div>
                 <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      // Lazily reload doctor profile if not available
+                      let doc = doctorProfile
+                      if (!doc) {
+                        try {
+                          const data = await loadSavedDoctorProfile()
+                          if (data) { setDoctorProfile(data); doc = data }
+                        } catch { /* ignore */ }
+                      }
+                      setPrintingPrescription(prescription)
+                    }}
+                    className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg"
+                    title="Print"
+                  >
+                    <Printer className="w-4 h-4" />
+                  </button>
                   <button
                     type="button"
                     onClick={() => startEditPrescription(prescription)}
@@ -1061,46 +1235,75 @@ export function PatientProfile() {
                   </button>
                 </div>
               </div>
+              {/* CC / O&E chips */}
+              {(prescription.chief_complaint || prescription.on_examination) && (
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {prescription.chief_complaint && (
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 text-xs font-medium border border-amber-200">
+                      CC: {prescription.chief_complaint}
+                    </span>
+                  )}
+                  {prescription.on_examination && (
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-purple-50 text-purple-800 text-xs font-medium border border-purple-200">
+                      O/E: {prescription.on_examination}
+                    </span>
+                  )}
+                </div>
+              )}
               {prescription.diagnosis && (
                 <div className="mb-3">
-                  <span className="text-sm font-medium text-text-secondary">Diagnosis: </span>
-                  <span className="text-sm">{prescription.diagnosis}</span>
+                  <span className="inline-flex items-center px-3 py-1 rounded-full bg-blue-50 text-blue-800 text-sm font-medium">
+                    {prescription.diagnosis}
+                  </span>
                 </div>
               )}
               {Array.isArray(prescription.medications) && prescription.medications.length > 0 && (
                 <div className="mb-3">
-                  <div className="text-sm font-medium text-text-secondary mb-2">Medications:</div>
-                  <div className="space-y-2">
-                    {prescription.medications.map((med: any, idx: number) => (
-                      <div key={idx} className="text-sm bg-blue-50 p-2 rounded">
-                        <div className="font-medium">{med.name}</div>
-                        <div className="text-text-secondary">
-                          {med.dosage} • {med.frequency} • {med.duration}
-                          {med.instructions && ` • ${med.instructions}`}
-                        </div>
-                      </div>
-                    ))}
+                  <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 flex items-center gap-1">
+                    <Pill className="w-3.5 h-3.5" /> Medications
                   </div>
+                  <ol className="space-y-1.5">
+                    {prescription.medications.map((med: any, idx: number) => (
+                      <li key={idx} className="flex items-start gap-2 text-sm">
+                        <span className="mt-0.5 flex-shrink-0 w-5 h-5 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center">{idx + 1}</span>
+                        <span>
+                          <span className="font-semibold text-primary">Rx</span>
+                          {' '}<span className="font-medium text-gray-800">{med.name}</span>
+                          {med.dosage && <span className="text-gray-600"> · {med.dosage}</span>}
+                          {med.frequency && <span className="text-gray-600"> · {med.frequency}</span>}
+                          {med.duration && <span className="text-gray-600"> · {med.duration}</span>}
+                          {med.instructions && <span className="text-gray-500 italic"> — {med.instructions}</span>}
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
                 </div>
               )}
               {Array.isArray(prescription.investigations) && prescription.investigations.length > 0 && (
                 <div className="mb-3">
-                  <div className="text-sm font-medium text-text-secondary mb-2">Investigations:</div>
-                  <div className="space-y-1">
-                    {prescription.investigations.map((inv: any, idx: number) => (
-                      <div key={idx} className="text-sm bg-green-50 p-2 rounded">
-                        <span className="font-medium">{inv.name}</span>
-                        {inv.description && <span className="text-text-secondary"> - {inv.description}</span>}
-                      </div>
-                    ))}
+                  <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 flex items-center gap-1">
+                    <FlaskConical className="w-3.5 h-3.5" /> Investigations
                   </div>
+                  <ul className="space-y-1">
+                    {prescription.investigations.map((inv: any, idx: number) => (
+                      <li key={idx} className="flex items-start gap-2 text-sm">
+                        <FlaskConical className="w-3.5 h-3.5 mt-0.5 text-teal-600 flex-shrink-0" />
+                        <span>
+                          <span className="font-medium text-gray-800">{inv.name}</span>
+                          {inv.urgency && inv.urgency !== 'Routine' && (
+                            <span className="ml-2 px-1.5 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-700">{inv.urgency}</span>
+                          )}
+                          {inv.description && <span className="text-gray-500"> — {inv.description}</span>}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
               {prescription.notes && (
-                <div className="text-sm">
-                  <span className="font-medium text-text-secondary">Notes: </span>
+                <blockquote className="mt-3 border-l-4 border-primary/30 pl-3 text-sm text-gray-600 italic">
                   {prescription.notes}
-                </div>
+                </blockquote>
               )}
             </div>
           ))}
@@ -1653,6 +1856,30 @@ export function PatientProfile() {
         />
       )}
 
+      {printingPrescription && patient && (
+        <PrescriptionPrint
+          prescription={{
+            prescribed_date: printingPrescription.prescribed_date || new Date().toISOString(),
+            chief_complaint: printingPrescription.chief_complaint || '',
+            on_examination: printingPrescription.on_examination || '',
+            diagnosis: printingPrescription.diagnosis || '',
+            medications: Array.isArray(printingPrescription.medications) ? printingPrescription.medications : [],
+            investigations: Array.isArray(printingPrescription.investigations) ? printingPrescription.investigations : [],
+            notes: printingPrescription.notes || '',
+          }}
+          patient={{
+            first_name: patient.first_name,
+            last_name: patient.last_name,
+            date_of_birth: patient.date_of_birth,
+            gender: patient.gender,
+            phone: patient.phone,
+            patient_code: patient.patient_code,
+          }}
+          doctor={doctorProfile || { full_name: '', degrees: '', designation: '', workplace: '' }}
+          onClose={() => setPrintingPrescription(null)}
+        />
+      )}
+
       {showTreatmentPlanForm && (
         <TreatmentPlanModal
           formData={treatmentPlanForm}
@@ -1924,6 +2151,29 @@ function VisitFormModal({ formData, setFormData, onSubmit, onClose }: any) {
   )
 }
 
+// Helper: shows recently-used chips from localStorage memory
+function RecentChips({ memoryKey, onSelect }: { memoryKey: string; onSelect: (val: string) => void }) {
+  const [items, setItems] = useState<string[]>([])
+  useEffect(() => {
+    setItems(getMemory(memoryKey).slice(0, 8))
+  }, [memoryKey])
+  if (items.length === 0) return null
+  return (
+    <div className="mt-2 flex flex-wrap gap-1.5">
+      {items.map((item, idx) => (
+        <button
+          key={idx}
+          type="button"
+          onClick={() => onSelect(item)}
+          className="px-2.5 py-1 bg-gray-100 text-gray-700 text-xs rounded-full border border-gray-200 hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-colors"
+        >
+          {item.length > 40 ? item.slice(0, 40) + '…' : item}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 function PrescriptionFormModal({
   formData,
   setFormData,
@@ -1939,10 +2189,28 @@ function PrescriptionFormModal({
   showInvTemplates,
   setShowInvTemplates,
 }: any) {
+  const [showComplaintTemplates, setShowComplaintTemplates] = useState(false)
+  const [showExamTemplates, setShowExamTemplates] = useState(false)
+  const [complaintTemplates, setComplaintTemplates] = useState<Array<SectionTemplate<string>>>([])
+  const [examinationTemplates, setExaminationTemplates] = useState<Array<SectionTemplate<string>>>([])
+  const [savedMedicationTemplates, setSavedMedicationTemplates] = useState<Array<SectionTemplate<MedicationTemplateItem[]>>>([])
+  const [savedInvestigationTemplates, setSavedInvestigationTemplates] = useState<Array<SectionTemplate<InvestigationTemplateItem[]>>>([])
+
+  useEffect(() => {
+    async function loadSectionTemplates() {
+      setComplaintTemplates(await getComplaintTemplates())
+      setExaminationTemplates(await getExaminationTemplates())
+      setSavedMedicationTemplates(await getMedicationSectionTemplates())
+      setSavedInvestigationTemplates(await getInvestigationSectionTemplates())
+    }
+
+    void loadSectionTemplates()
+  }, [])
+
   function addMedication() {
     setFormData({
       ...formData,
-      medications: [...formData.medications, { name: '', dosage: '', frequency: '', duration: '', instructions: '' }],
+      medications: [...formData.medications, { name: '', dosage: '', frequency: '', duration: '', instructions: '', route: '' }],
     })
   }
 
@@ -1953,7 +2221,7 @@ function PrescriptionFormModal({
   function addInvestigation() {
     setFormData({
       ...formData,
-      investigations: [...formData.investigations, { name: '', description: '' }],
+      investigations: [...formData.investigations, { name: '', description: '', urgency: 'Routine' }],
     })
   }
 
@@ -1996,6 +2264,62 @@ function PrescriptionFormModal({
     setShowInvTemplates(false)
   }
 
+  function applyMedicationSectionTemplate(template: SectionTemplate<MedicationTemplateItem[]>) {
+    setFormData({
+      ...formData,
+      medications: template.value.length > 0
+        ? template.value.map((item) => ({ ...item }))
+        : [{ name: '', dosage: '', frequency: '', duration: '', instructions: '', route: '' }],
+    })
+    setShowMedTemplates(false)
+  }
+
+  function applyInvestigationSectionTemplate(template: SectionTemplate<InvestigationTemplateItem[]>) {
+    setFormData({
+      ...formData,
+      investigations: template.value.length > 0
+        ? template.value.map((item) => ({ ...item }))
+        : [{ name: '', description: '', urgency: 'Routine' }],
+    })
+    setShowInvTemplates(false)
+  }
+
+  async function handleSaveComplaintTemplate() {
+    if (!formData.chief_complaint.trim()) {
+      alert('Enter a chief complaint before saving a template.')
+      return
+    }
+    setComplaintTemplates(await saveComplaintTemplate(formData.chief_complaint))
+    setShowComplaintTemplates(true)
+  }
+
+  async function handleSaveExaminationTemplate() {
+    if (!formData.on_examination.trim()) {
+      alert('Enter on-examination notes before saving a template.')
+      return
+    }
+    setExaminationTemplates(await saveExaminationTemplate(formData.on_examination))
+    setShowExamTemplates(true)
+  }
+
+  async function handleSaveMedicationTemplate() {
+    if (getFilledMedicationItems(formData.medications).length === 0) {
+      alert('Add at least one medication before saving a template.')
+      return
+    }
+    setSavedMedicationTemplates(await saveMedicationSectionTemplate(formData.medications))
+    setShowMedTemplates(true)
+  }
+
+  async function handleSaveInvestigationTemplate() {
+    if (getFilledInvestigationItems(formData.investigations).length === 0) {
+      alert('Add at least one investigation before saving a template.')
+      return
+    }
+    setSavedInvestigationTemplates(await saveInvestigationSectionTemplate(formData.investigations))
+    setShowInvTemplates(true)
+  }
+
   function applyLocalMedication(med: any) {
     const newMeds = [...formData.medications]
     const emptyIndex = newMeds.findIndex((m: any) => !m.name.trim())
@@ -2030,30 +2354,177 @@ function PrescriptionFormModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full my-8">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-xl font-bold">
-            {isEditing ? 'Edit Prescription' : 'New Prescription'}
-          </h2>
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full my-8 overflow-hidden">
+        {/* ── Header ── */}
+        <div className="bg-gradient-to-r from-primary via-[#1b4e70] to-slate-900 px-6 py-5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+              <Stethoscope className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-white">
+                {isEditing ? 'Update Prescription' : 'New Prescription'}
+              </h2>
+              <p className="text-blue-200 text-xs">Dental Prescription Form</p>
+            </div>
+          </div>
+          <button type="button" onClick={onClose} className="text-white/70 hover:text-white transition-colors">
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
-        <form onSubmit={onSubmit} className="p-6 space-y-6">
+        <form onSubmit={onSubmit} className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
+          {/* ── Chief Complaint ── */}
           <div>
-            <label className="block text-sm font-medium mb-1">Diagnosis</label>
-            <input
-              type="text"
-              value={formData.diagnosis}
-              onChange={(e) => setFormData({ ...formData, diagnosis: e.target.value })}
-              placeholder="Enter diagnosis"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            <div className="mb-2 flex items-center gap-2">
+              <label className="block text-sm font-semibold text-gray-700">Chief Complaint</label>
+              <div className="ml-auto flex gap-2">
+                <Button type="button" size="sm" variant="outline" onClick={handleSaveComplaintTemplate}>
+                  Save Template
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowComplaintTemplates(!showComplaintTemplates)}
+                >
+                  <Lightbulb className="w-4 h-4 mr-1" />
+                  Templates ({complaintTemplates.length})
+                </Button>
+              </div>
+            </div>
+            <textarea
+              rows={2}
+              value={formData.chief_complaint || ''}
+              onChange={(e) => setFormData({ ...formData, chief_complaint: e.target.value })}
+              placeholder="e.g., Toothache, Bleeding gums, Sensitivity to cold..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none text-sm"
+            />
+            {showComplaintTemplates && (
+              <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
+                <div className="mb-3 flex items-center justify-between">
+                  <h4 className="font-semibold text-sm text-amber-900">Chief Complaint Templates</h4>
+                  <button type="button" onClick={() => setShowComplaintTemplates(false)} className="text-amber-500 hover:text-amber-700">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                {complaintTemplates.length === 0 ? (
+                  <p className="text-sm text-amber-900/80">Save a complaint once, then reuse it from here.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {complaintTemplates.map((template) => (
+                      <button
+                        key={template.id}
+                        type="button"
+                        onClick={() => {
+                          setFormData({ ...formData, chief_complaint: template.value })
+                          setShowComplaintTemplates(false)
+                        }}
+                        className="rounded-full border border-amber-200 bg-white px-3 py-1.5 text-left text-sm text-amber-900 hover:border-primary hover:text-primary"
+                      >
+                        {template.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            <RecentChips
+              memoryKey={MEMORY_KEYS.COMPLAINTS}
+              onSelect={(val) => setFormData({ ...formData, chief_complaint: val })}
             />
           </div>
 
+          {/* ── On Examination ── */}
           <div>
-            <div className="flex items-center justify-between mb-3">
-              <label className="block text-sm font-medium">Medications</label>
-              <div className="flex gap-2">
+            <div className="mb-2 flex items-center gap-2">
+              <label className="block text-sm font-semibold text-gray-700">On Examination</label>
+              <div className="ml-auto flex gap-2">
+                <Button type="button" size="sm" variant="outline" onClick={handleSaveExaminationTemplate}>
+                  Save Template
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowExamTemplates(!showExamTemplates)}
+                >
+                  <Lightbulb className="w-4 h-4 mr-1" />
+                  Templates ({examinationTemplates.length})
+                </Button>
+              </div>
+            </div>
+            <textarea
+              rows={2}
+              value={formData.on_examination || ''}
+              onChange={(e) => setFormData({ ...formData, on_examination: e.target.value })}
+              placeholder="e.g., Deep caries in 36, Periapical pathology on OPG, Pocket depth 5mm..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none text-sm"
+            />
+            {showExamTemplates && (
+              <div className="mt-3 rounded-xl border border-sky-200 bg-sky-50 p-4 shadow-sm">
+                <div className="mb-3 flex items-center justify-between">
+                  <h4 className="font-semibold text-sm text-sky-900">On Examination Templates</h4>
+                  <button type="button" onClick={() => setShowExamTemplates(false)} className="text-sky-500 hover:text-sky-700">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                {examinationTemplates.length === 0 ? (
+                  <p className="text-sm text-sky-900/80">Save examination notes once, then reuse them from here.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {examinationTemplates.map((template) => (
+                      <button
+                        key={template.id}
+                        type="button"
+                        onClick={() => {
+                          setFormData({ ...formData, on_examination: template.value })
+                          setShowExamTemplates(false)
+                        }}
+                        className="rounded-full border border-sky-200 bg-white px-3 py-1.5 text-left text-sm text-sky-900 hover:border-primary hover:text-primary"
+                      >
+                        {template.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            <RecentChips
+              memoryKey={MEMORY_KEYS.EXAMINATIONS}
+              onSelect={(val) => setFormData({ ...formData, on_examination: val })}
+            />
+          </div>
+
+          {/* ── Diagnosis ── */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">Clinical Diagnosis</label>
+            <textarea
+              rows={2}
+              value={formData.diagnosis}
+              onChange={(e) => setFormData({ ...formData, diagnosis: e.target.value })}
+              placeholder="Enter diagnosis"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+            />
+            <p className="text-xs text-gray-400 mt-1">e.g., Dental caries (K02.1), Periapical abscess (K04.7)</p>
+          </div>
+
+          {/* ── Medications ── */}
+          <div>
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-1 h-6 rounded-full bg-primary"></div>
+              <Pill className="w-4 h-4 text-primary" />
+              <span className="font-semibold text-gray-800">Rx — Medications</span>
+              <div className="ml-auto flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleSaveMedicationTemplate}
+                >
+                  Save Template
+                </Button>
                 <Button
                   type="button"
                   size="sm"
@@ -2061,118 +2532,189 @@ function PrescriptionFormModal({
                   onClick={() => setShowMedTemplates(!showMedTemplates)}
                 >
                   <Lightbulb className="w-4 h-4 mr-1" />
-                  Templates ({medicationTemplates.length})
-                </Button>
-                <Button type="button" size="sm" onClick={addMedication}>
-                  <Plus className="w-4 h-4 mr-1" />
-                  Add
+                  Templates ({savedMedicationTemplates.length})
                 </Button>
               </div>
             </div>
 
-            {showMedTemplates && medicationTemplates.length > 0 && (
-              <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-medium text-sm">Quick Add from Templates</h4>
-                  <button type="button" onClick={() => setShowMedTemplates(false)}>
+            {showMedTemplates && (
+              <div className="mb-4 p-4 bg-blue-50 rounded-xl border border-blue-200 shadow-sm">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-semibold text-sm text-blue-800">📋 Medication Templates</h4>
+                  <button type="button" onClick={() => setShowMedTemplates(false)} className="text-blue-400 hover:text-blue-600">
                     <X className="w-4 h-4" />
                   </button>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                  {medicationTemplates.slice(0, 10).map((template: any) => (
-                    <button
-                      key={template.id}
-                      type="button"
-                      onClick={() => addMedicationFromTemplate(template)}
-                      className="text-left p-2 bg-white rounded border border-gray-200 hover:border-primary hover:bg-primary/5 transition-colors"
-                    >
-                      <div className="font-medium text-sm">{template.name}</div>
-                      <div className="text-xs text-text-secondary">
-                        {template.dosage} • {template.frequency} • {template.duration}
-                      </div>
-                    </button>
-                  ))}
-                </div>
+                {savedMedicationTemplates.length > 0 && (
+                  <div className="mb-4">
+                    <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-blue-700">Saved prescription templates</div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {savedMedicationTemplates.map((template) => (
+                        <button
+                          key={template.id}
+                          type="button"
+                          onClick={() => applyMedicationSectionTemplate(template)}
+                          className="text-left p-2.5 bg-white rounded-lg border border-blue-200 hover:border-primary hover:bg-primary/5 transition-colors"
+                        >
+                          <div className="font-medium text-sm text-gray-800">{template.label}</div>
+                          <div className="text-xs text-gray-500">
+                            {template.value.length} medication{template.value.length === 1 ? '' : 's'}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {medicationTemplates.length > 0 && (
+                  <div>
+                    <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-blue-700">Quick-add common medications</div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {medicationTemplates.slice(0, 10).map((template: any) => (
+                        <button
+                          key={template.id}
+                          type="button"
+                          onClick={() => addMedicationFromTemplate(template)}
+                          className="text-left p-2.5 bg-white rounded-lg border border-blue-200 hover:border-primary hover:bg-primary/5 transition-colors"
+                        >
+                          <div className="font-medium text-sm text-gray-800">{template.name}</div>
+                          <div className="text-xs text-gray-500">
+                            {template.dosage} • {template.frequency} • {template.duration}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {savedMedicationTemplates.length === 0 && medicationTemplates.length === 0 && (
+                  <p className="text-sm text-blue-900/80">Save a medication set once, then reuse it from here.</p>
+                )}
               </div>
             )}
 
             <div className="space-y-3">
               {formData.medications.map((med: any, index: number) => (
-                <div key={index} className="grid grid-cols-1 md:grid-cols-5 gap-2 p-3 bg-gray-50 rounded-lg">
-                  <input
-                    type="text"
-                    placeholder="Medicine name"
-                    value={med.name}
-                    onChange={(e) => {
-                      const newMeds = [...formData.medications]
-                      newMeds[index].name = e.target.value
-                      setFormData({ ...formData, medications: newMeds })
-                    }}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Dosage"
-                    value={med.dosage}
-                    onChange={(e) => {
-                      const newMeds = [...formData.medications]
-                      newMeds[index].dosage = e.target.value
-                      setFormData({ ...formData, medications: newMeds })
-                    }}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Frequency"
-                    value={med.frequency}
-                    onChange={(e) => {
-                      const newMeds = [...formData.medications]
-                      newMeds[index].frequency = e.target.value
-                      setFormData({ ...formData, medications: newMeds })
-                    }}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Duration"
-                    value={med.duration}
-                    onChange={(e) => {
-                      const newMeds = [...formData.medications]
-                      newMeds[index].duration = e.target.value
-                      setFormData({ ...formData, medications: newMeds })
-                    }}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Instructions"
-                      value={med.instructions}
-                      onChange={(e) => {
-                        const newMeds = [...formData.medications]
-                        newMeds[index].instructions = e.target.value
-                        setFormData({ ...formData, medications: newMeds })
-                      }}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
-                    {formData.medications.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeMedication(index)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    )}
+                <div key={index} className="relative rounded-xl border border-gray-200 bg-white shadow-sm p-4">
+                  {/* Number badge */}
+                  <div className="absolute -left-3 top-4 w-6 h-6 rounded-full bg-primary text-white text-xs font-bold flex items-center justify-center shadow">
+                    {index + 1}
+                  </div>
+                  {/* Remove button */}
+                  {formData.medications.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => removeMedication(index)}
+                      className="absolute top-3 right-3 text-gray-300 hover:text-red-500 transition-colors"
+                      title="Remove"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                  {/* Row 1: Drug Name | Dosage | Route */}
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Drug Name</label>
+                      <input
+                        type="text"
+                        placeholder="e.g., Amoxicillin 500mg"
+                        value={med.name}
+                        onChange={(e) => {
+                          const newMeds = [...formData.medications]
+                          newMeds[index] = { ...newMeds[index], name: e.target.value }
+                          setFormData({ ...formData, medications: newMeds })
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Dosage</label>
+                      <input
+                        type="text"
+                        placeholder="e.g., 500mg"
+                        value={med.dosage}
+                        onChange={(e) => {
+                          const newMeds = [...formData.medications]
+                          newMeds[index] = { ...newMeds[index], dosage: e.target.value }
+                          setFormData({ ...formData, medications: newMeds })
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Route</label>
+                      <input
+                        type="text"
+                        placeholder="Oral / Topical / IV"
+                        value={med.route || ''}
+                        onChange={(e) => {
+                          const newMeds = [...formData.medications]
+                          newMeds[index] = { ...newMeds[index], route: e.target.value }
+                          setFormData({ ...formData, medications: newMeds })
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+                  </div>
+                  {/* Row 2: Frequency | Duration | Instructions */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Frequency</label>
+                      <input
+                        type="text"
+                        placeholder="e.g., 3x daily"
+                        value={med.frequency}
+                        onChange={(e) => {
+                          const newMeds = [...formData.medications]
+                          newMeds[index] = { ...newMeds[index], frequency: e.target.value }
+                          setFormData({ ...formData, medications: newMeds })
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Duration</label>
+                      <input
+                        type="text"
+                        placeholder="e.g., 5 days"
+                        value={med.duration}
+                        onChange={(e) => {
+                          const newMeds = [...formData.medications]
+                          newMeds[index] = { ...newMeds[index], duration: e.target.value }
+                          setFormData({ ...formData, medications: newMeds })
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Special Instructions</label>
+                      <input
+                        type="text"
+                        placeholder="e.g., after meals"
+                        value={med.instructions}
+                        onChange={(e) => {
+                          const newMeds = [...formData.medications]
+                          newMeds[index] = { ...newMeds[index], instructions: e.target.value }
+                          setFormData({ ...formData, medications: newMeds })
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
 
+            <button
+              type="button"
+              onClick={addMedication}
+              className="mt-3 w-full border-2 border-dashed border-gray-300 rounded-xl py-2.5 text-sm text-gray-500 hover:border-primary hover:text-primary transition-colors flex items-center justify-center gap-1"
+            >
+              <Plus className="w-4 h-4" /> Add another medication
+            </button>
+
             {localMeds.length > 0 && (
               <div className="mt-3">
                 <div className="text-xs font-medium text-text-secondary mb-2">
-                  Recently Used — click to add:
+                  Quick-add recent medications:
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {localMeds.map((med: any, idx: number) => (
@@ -2191,10 +2733,21 @@ function PrescriptionFormModal({
             )}
           </div>
 
+          {/* ── Investigations ── */}
           <div>
-            <div className="flex items-center justify-between mb-3">
-              <label className="block text-sm font-medium">Investigations</label>
-              <div className="flex gap-2">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-1 h-6 rounded-full bg-teal-500"></div>
+              <FlaskConical className="w-4 h-4 text-teal-600" />
+              <span className="font-semibold text-gray-800">🔬 Investigations / Referrals</span>
+              <div className="ml-auto flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleSaveInvestigationTemplate}
+                >
+                  Save Template
+                </Button>
                 <Button
                   type="button"
                   size="sm"
@@ -2202,83 +2755,147 @@ function PrescriptionFormModal({
                   onClick={() => setShowInvTemplates(!showInvTemplates)}
                 >
                   <Lightbulb className="w-4 h-4 mr-1" />
-                  Templates ({investigationTemplates.length})
-                </Button>
-                <Button type="button" size="sm" onClick={addInvestigation}>
-                  <Plus className="w-4 h-4 mr-1" />
-                  Add
+                  Templates ({savedInvestigationTemplates.length})
                 </Button>
               </div>
             </div>
 
-            {showInvTemplates && investigationTemplates.length > 0 && (
-              <div className="mb-4 p-4 bg-green-50 rounded-lg border border-green-200">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="font-medium text-sm">Quick Add from Templates</h4>
-                  <button type="button" onClick={() => setShowInvTemplates(false)}>
+            {showInvTemplates && (
+              <div className="mb-4 p-4 bg-teal-50 rounded-xl border border-teal-200 shadow-sm">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-semibold text-sm text-teal-800">📋 Investigation Templates</h4>
+                  <button type="button" onClick={() => setShowInvTemplates(false)} className="text-teal-400 hover:text-teal-600">
                     <X className="w-4 h-4" />
                   </button>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                  {investigationTemplates.slice(0, 12).map((template: any) => (
-                    <button
-                      key={template.id}
-                      type="button"
-                      onClick={() => addInvestigationFromTemplate(template)}
-                      className="text-left p-2 bg-white rounded border border-gray-200 hover:border-primary hover:bg-primary/5 transition-colors"
-                    >
-                      <div className="font-medium text-sm">{template.name}</div>
-                      {template.description && (
-                        <div className="text-xs text-text-secondary truncate">{template.description}</div>
-                      )}
-                    </button>
-                  ))}
-                </div>
+                {savedInvestigationTemplates.length > 0 && (
+                  <div className="mb-4">
+                    <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-teal-700">Saved prescription templates</div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {savedInvestigationTemplates.map((template) => (
+                        <button
+                          key={template.id}
+                          type="button"
+                          onClick={() => applyInvestigationSectionTemplate(template)}
+                          className="text-left p-2.5 bg-white rounded-lg border border-teal-200 hover:border-teal-500 hover:bg-teal-50/50 transition-colors"
+                        >
+                          <div className="font-medium text-sm text-gray-800">{template.label}</div>
+                          <div className="text-xs text-gray-500">
+                            {template.value.length} investigation{template.value.length === 1 ? '' : 's'}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {investigationTemplates.length > 0 && (
+                  <div>
+                    <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-teal-700">Quick-add common investigations</div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      {investigationTemplates.slice(0, 12).map((template: any) => (
+                        <button
+                          key={template.id}
+                          type="button"
+                          onClick={() => addInvestigationFromTemplate(template)}
+                          className="text-left p-2.5 bg-white rounded-lg border border-teal-200 hover:border-teal-500 hover:bg-teal-50/50 transition-colors"
+                        >
+                          <div className="font-medium text-sm text-gray-800">{template.name}</div>
+                          {template.description && (
+                            <div className="text-xs text-gray-500 truncate">{template.description}</div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {savedInvestigationTemplates.length === 0 && investigationTemplates.length === 0 && (
+                  <p className="text-sm text-teal-900/80">Save an investigation set once, then reuse it from here.</p>
+                )}
               </div>
             )}
 
             <div className="space-y-3">
               {formData.investigations.map((inv: any, index: number) => (
-                <div key={index} className="flex gap-2 p-3 bg-gray-50 rounded-lg">
-                  <input
-                    type="text"
-                    placeholder="Investigation name (e.g., CBC, X-Ray)"
-                    value={inv.name}
-                    onChange={(e) => {
-                      const newInvs = [...formData.investigations]
-                      newInvs[index].name = e.target.value
-                      setFormData({ ...formData, investigations: newInvs })
-                    }}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Description (optional)"
-                    value={inv.description}
-                    onChange={(e) => {
-                      const newInvs = [...formData.investigations]
-                      newInvs[index].description = e.target.value
-                      setFormData({ ...formData, investigations: newInvs })
-                    }}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
+                <div key={index} className="relative rounded-xl border border-gray-200 bg-white shadow-sm p-4">
+                  {/* Number badge */}
+                  <div className="absolute -left-3 top-4 w-6 h-6 rounded-full bg-teal-500 text-white text-xs font-bold flex items-center justify-center shadow">
+                    {index + 1}
+                  </div>
+                  {/* Remove button */}
                   {formData.investigations.length > 1 && (
                     <button
                       type="button"
                       onClick={() => removeInvestigation(index)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                      className="absolute top-3 right-3 text-gray-300 hover:text-red-500 transition-colors"
+                      title="Remove"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <X className="w-4 h-4" />
                     </button>
                   )}
+                  {/* Row 1: Name | Urgency */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Investigation Name</label>
+                      <input
+                        type="text"
+                        placeholder="e.g., OPG X-Ray, CBC, Blood Glucose"
+                        value={inv.name}
+                        onChange={(e) => {
+                          const newInvs = [...formData.investigations]
+                          newInvs[index] = { ...newInvs[index], name: e.target.value }
+                          setFormData({ ...formData, investigations: newInvs })
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Urgency</label>
+                      <select
+                        value={inv.urgency || 'Routine'}
+                        onChange={(e) => {
+                          const newInvs = [...formData.investigations]
+                          newInvs[index] = { ...newInvs[index], urgency: e.target.value }
+                          setFormData({ ...formData, investigations: newInvs })
+                        }}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                      >
+                        <option value="Routine">Routine</option>
+                        <option value="Urgent">Urgent</option>
+                        <option value="STAT">STAT</option>
+                      </select>
+                    </div>
+                  </div>
+                  {/* Row 2: Clinical Notes */}
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Clinical Notes / Instructions</label>
+                    <textarea
+                      rows={1}
+                      placeholder="Additional notes (optional)"
+                      value={inv.description}
+                      onChange={(e) => {
+                        const newInvs = [...formData.investigations]
+                        newInvs[index] = { ...newInvs[index], description: e.target.value }
+                        setFormData({ ...formData, investigations: newInvs })
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                    />
+                  </div>
                 </div>
               ))}
             </div>
 
+            <button
+              type="button"
+              onClick={addInvestigation}
+              className="mt-3 w-full border-2 border-dashed border-gray-300 rounded-xl py-2.5 text-sm text-gray-500 hover:border-teal-500 hover:text-teal-600 transition-colors flex items-center justify-center gap-1"
+            >
+              <Plus className="w-4 h-4" /> Add another investigation
+            </button>
+
             {localInvs.length > 0 && (
               <div className="mt-3">
                 <div className="text-xs font-medium text-text-secondary mb-2">
-                  Recently Used — click to add:
+                  Quick-add recent investigations:
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {localInvs.map((inv: any, idx: number) => (
@@ -2286,7 +2903,7 @@ function PrescriptionFormModal({
                       key={idx}
                       type="button"
                       onClick={() => applyLocalInvestigation(inv)}
-                      className="px-3 py-1.5 bg-green-50 text-green-700 text-sm rounded-full border border-green-200 hover:bg-green-100 transition-colors"
+                      className="px-3 py-1.5 bg-teal-50 text-teal-700 text-sm rounded-full border border-teal-200 hover:bg-teal-100 transition-colors"
                       title={inv.description || ''}
                     >
                       {inv.name}
@@ -2297,22 +2914,25 @@ function PrescriptionFormModal({
             )}
           </div>
 
+          {/* ── Notes ── */}
           <div>
-            <label className="block text-sm font-medium mb-1">Notes</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">📝 Clinician's Notes & Follow-up Instructions</label>
             <textarea
-              rows={3}
+              rows={4}
               value={formData.notes}
               onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              placeholder="Additional notes..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              placeholder="Follow-up in X days, avoid hot food, refer to specialist if symptoms persist..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary resize-none"
             />
           </div>
 
-          <div className="flex gap-3 pt-4">
-            <Button type="submit" className="flex-1">
-              {isEditing ? 'Update Prescription' : 'Save Prescription'}
+          {/* ── Footer ── */}
+          <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="submit" className="flex items-center gap-2">
+              <CheckCircle className="w-4 h-4" />
+              {isEditing ? 'Update Prescription' : 'Issue Prescription'}
             </Button>
-            <Button type="button" variant="outline" onClick={onClose} className="flex-1">Cancel</Button>
           </div>
         </form>
       </div>
