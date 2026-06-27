@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 620" fill="none" aria-labelledby="skd-logo-title skd-logo-desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 620" fill="none" style="color:#1A2B6B;--tagline-color:#7D90B6" aria-labelledby="skd-logo-title skd-logo-desc">
   <title id="skd-logo-title">SK Dental</title>
   <desc id="skd-logo-desc">SK Dental logo with tooth monogram and tagline</desc>
 
@@ -15,7 +15,7 @@
        C535 448 557 425 564 393
        C578 332 600 281 600 228
        C600 128 538 68 450 68 Z"
-    stroke="#1A2B6B"
+    stroke="currentColor"
     stroke-width="14"
     fill="none"
     stroke-linecap="round"
@@ -29,7 +29,7 @@
     font-family="'Brush Script MT', 'Segoe Script', 'Snell Roundhand', cursive"
     font-size="154"
     font-weight="700"
-    fill="#1A2B6B"
+    fill="currentColor"
   >SK</text>
 
   <text
@@ -40,10 +40,10 @@
     font-size="78"
     font-weight="800"
     letter-spacing="2"
-    fill="#1A2B6B"
+    fill="currentColor"
   >SK DENTAL</text>
 
-  <line x1="110" y1="564" x2="286" y2="564" stroke="#7D90B6" stroke-width="3" />
+  <line x1="110" y1="564" x2="286" y2="564" stroke="var(--tagline-color)" stroke-width="3" />
   <text
     x="450"
     y="570"
@@ -51,7 +51,7 @@
     font-family="Inter, 'Helvetica Neue', Arial, sans-serif"
     font-size="30"
     font-weight="500"
-    fill="#7D90B6"
+    fill="var(--tagline-color)"
   >Your Smile, Our Priority</text>
-  <line x1="614" y1="564" x2="790" y2="564" stroke="#7D90B6" stroke-width="3" />
+  <line x1="614" y1="564" x2="790" y2="564" stroke="var(--tagline-color)" stroke-width="3" />
 </svg>
