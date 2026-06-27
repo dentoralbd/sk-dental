@@ -22,15 +22,12 @@
     stroke-linejoin="round"
   />
 
-  <text
-    x="450"
-    y="250"
-    text-anchor="middle"
-    font-family="'Brush Script MT', 'Segoe Script', 'Snell Roundhand', cursive"
-    font-size="154"
-    font-weight="700"
-    fill="currentColor"
-  >SK</text>
+  <g stroke="currentColor" stroke-width="18" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M390 205 C413 176 468 178 470 212 C472 246 410 242 408 276 C406 307 455 315 486 286" />
+    <path d="M510 182 L510 304" />
+    <path d="M510 250 C527 232 544 210 565 183" />
+    <path d="M516 249 C538 267 553 286 575 305" />
+  </g>
 
   <text
     x="450"

@@ -22,13 +22,10 @@
     stroke-linejoin="round"
   />
 
-  <text
-    x="210"
-    y="194"
-    text-anchor="middle"
-    font-family="'Brush Script MT', 'Segoe Script', 'Snell Roundhand', cursive"
-    font-size="118"
-    font-weight="700"
-    fill="currentColor"
-  >SK</text>
+  <g stroke="currentColor" stroke-width="11" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M159 166 C177 146 215 147 217 171 C219 193 176 191 175 214 C174 237 208 243 227 224" />
+    <path d="M244 146 L244 238" />
+    <path d="M244 195 C256 179 269 163 284 145" />
+    <path d="M249 194 C263 208 277 223 293 238" />
+  </g>
 </svg>
