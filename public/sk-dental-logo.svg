@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 620" fill="none" style="color:#1A2B6B;--tagline-color:#7D90B6" aria-labelledby="skd-logo-title skd-logo-desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 620" fill="none" style="color:var(--skd-primary,#1A2B6B);--tagline-color:var(--skd-tagline,#7D90B6)" aria-labelledby="skd-logo-title skd-logo-desc">
   <title id="skd-logo-title">SK Dental</title>
   <desc id="skd-logo-desc">SK Dental logo with tooth monogram and tagline</desc>
 

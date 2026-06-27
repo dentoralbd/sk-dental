@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 460" fill="none" style="color:#1A2B6B" aria-labelledby="skd-mark-title skd-mark-desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 460" fill="none" style="color:var(--skd-primary,#1A2B6B)" aria-labelledby="skd-mark-title skd-mark-desc">
   <title id="skd-mark-title">SK Dental Mark</title>
   <desc id="skd-mark-desc">SK Dental tooth and SK monogram mark</desc>
 
