@@ -184,7 +184,7 @@ export function PatientProfile() {
     on_examination: '',
     diagnosis: '',
     medications: [{ name: '', dosage: '', frequency: '', duration: '', instructions: '' }],
-    investigations: [{ name: '', description: '' }],
+    investigations: [{ name: '', description: '', urgency: 'Routine' }],
     notes: '',
   })
 
@@ -435,7 +435,7 @@ export function PatientProfile() {
         on_examination: '',
         diagnosis: '',
         medications: [{ name: '', dosage: '', frequency: '', duration: '', instructions: '' }],
-        investigations: [{ name: '', description: '' }],
+        investigations: [{ name: '', description: '', urgency: 'Routine' }],
         notes: '',
       })
       loadPatientData()
@@ -459,7 +459,7 @@ export function PatientProfile() {
       investigations:
         Array.isArray(prescription.investigations) && prescription.investigations.length > 0
           ? prescription.investigations
-          : [{ name: '', description: '' }],
+          : [{ name: '', description: '', urgency: 'Routine' }],
       notes: prescription.notes || '',
     })
     setShowPrescriptionForm(true)
