@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 312 315" fill="none" aria-labelledby="skd-mark-title skd-mark-desc">
+  <title id="skd-mark-title">SK Dental Mark</title>
+  <desc id="skd-mark-desc">SK Dental tooth mark</desc>
+
+  <!-- Translate content to origin-based coordinates (source geometry centered at x=256, shifted left by 100 and up by 15) -->
+  <g transform="translate(-100, -15)">
+    <!-- Tooth silhouette outline (same geometry as full logo) -->
+    <path
+      d="M 256 30
+         C 300 30 340 55 350 100
+         C 360 145 340 175 340 210
+         C 340 240 345 260 340 265
+         L 312 265
+         L 312 294
+         C 312 307 306 315 298 315
+         C 290 315 285 306 282 293
+         L 275 265
+         L 237 265
+         L 230 293
+         C 227 306 222 315 214 315
+         C 206 315 200 307 200 294
+         L 200 265
+         L 172 265
+         C 167 260 172 240 172 210
+         C 172 175 152 145 162 100
+         C 172 55 212 30 256 30
+         Z"
+      stroke="currentColor" stroke-width="8" fill="none"
+      stroke-linejoin="round" stroke-linecap="round"
+    />
+
+    <!-- "SK" monogram centered inside tooth crown -->
+    <text
+      x="256" y="168"
+      text-anchor="middle" dominant-baseline="middle"
+      font-family="Inter, 'Helvetica Neue', Arial, sans-serif"
+      font-weight="800" font-size="80"
+      fill="currentColor"
+    >SK</text>
+  </g>
+</svg>
