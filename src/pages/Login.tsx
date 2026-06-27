@@ -36,8 +36,8 @@ export function Login() {
     <div className="min-h-screen bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center p-4">
       <div className={`bg-white rounded-2xl shadow-xl p-8 w-full max-w-md ${shake ? 'shake' : ''}`}>
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-primary/10 rounded-full mb-4 overflow-hidden">
-            <img src={clinicConfig.markPath} alt={`${clinicConfig.name} logo`} className="h-14 w-14 object-contain" />
+          <div className="inline-flex items-center justify-center w-24 h-24 bg-primary/5 rounded-full mb-4 overflow-hidden">
+            <img src={clinicConfig.logoPath} alt={`${clinicConfig.name} logo`} className="h-20 w-20 object-contain" />
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">{clinicConfig.name}</h1>
           <p className="text-text-secondary">{clinicConfig.tagline}</p>
