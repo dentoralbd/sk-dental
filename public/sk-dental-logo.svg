@@ -1,54 +1,106 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 620" fill="none" aria-labelledby="skd-logo-title skd-logo-desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 480" fill="none" aria-labelledby="skd-logo-title">
   <title id="skd-logo-title">SK Dental</title>
-  <desc id="skd-logo-desc">SK Dental logo with tooth monogram and tagline</desc>
 
+  <!--
+    Tooth outline: wide rounded shoulders tapering to two roots at the bottom.
+    The overall shape is a rounded-top molar with a notch between two root tips.
+    The inner "SK" monogram is drawn inside the tooth silhouette.
+  -->
+
+  <!-- Outer tooth outline -->
   <path
-    d="M450 68
-       C362 68 300 128 300 228
-       C300 281 322 332 336 393
-       C343 425 365 448 389 448
-       C414 448 430 428 438 394
-       L450 346
-       L462 394
-       C470 428 486 448 511 448
-       C535 448 557 425 564 393
-       C578 332 600 281 600 228
-       C600 128 538 68 450 68 Z"
-    stroke="var(--skd-primary,#1A2B6B)"
-    stroke-width="14"
+    d="
+      M200 28
+      C155 28 118 48 100 82
+      C84 112 84 148 96 182
+      C105 208 116 228 122 254
+      C128 280 128 308 136 332
+      C141 348 150 358 162 358
+      C174 358 181 346 185 326
+      L191 296
+      C194 282 197 274 200 274
+      C203 274 206 282 209 296
+      L215 326
+      C219 346 226 358 238 358
+      C250 358 259 348 264 332
+      C272 308 272 280 278 254
+      C284 228 295 208 304 182
+      C316 148 316 112 300 82
+      C282 48 245 28 200 28 Z
+    "
+    stroke="#1A2E6E"
+    stroke-width="11"
     fill="none"
     stroke-linecap="round"
     stroke-linejoin="round"
   />
 
-  <g stroke="var(--skd-primary,#1A2B6B)" stroke-width="18" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-    <path d="M390 205 C413 176 468 178 470 212 C472 246 410 242 408 276 C406 307 455 315 486 286" />
-    <path d="M510 182 L510 304" />
-    <path d="M510 250 C527 232 544 210 565 183" />
-    <path d="M516 249 C538 267 553 286 575 305" />
-  </g>
+  <!--
+    SK monogram inside the tooth.
+    S: a flowing reverse-S curve — top arc curves right, bottom arc curves left
+    K: vertical stem, upper diagonal arm going top-right, lower diagonal arm going bottom-right
+  -->
 
+  <!-- S letter: flowing cursive S shape -->
+  <path
+    d="
+      M162 110
+      C162 98 172 90 184 92
+      C200 94 210 108 206 122
+      C202 134 188 138 178 146
+      C166 156 160 170 166 184
+      C172 198 188 204 202 200
+      C214 196 220 186 218 174
+    "
+    stroke="#1A2E6E"
+    stroke-width="10"
+    fill="none"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+  <!-- K letter: vertical stem -->
+  <line x1="228" y1="90" x2="228" y2="208" stroke="#1A2E6E" stroke-width="10" stroke-linecap="round"/>
+  <!-- K upper arm -->
+  <path d="M228 152 L262 96" stroke="#1A2E6E" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- K lower arm -->
+  <path d="M228 152 L264 210" stroke="#1A2E6E" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Decorative swash/flourish at bottom of S (like in the reference) -->
+  <path
+    d="M162 202 C148 210 142 226 150 240 C156 250 170 252 182 248"
+    stroke="#1A2E6E"
+    stroke-width="9"
+    fill="none"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+
+  <!-- SK DENTAL wordmark -->
   <text
-    x="450"
-    y="520"
+    x="200"
+    y="410"
     text-anchor="middle"
-    font-family="Inter, 'Helvetica Neue', Arial, sans-serif"
-    font-size="78"
-    font-weight="800"
-    letter-spacing="2"
-    fill="var(--skd-primary,#1A2B6B)"
+    font-family="'Arial Black', 'Helvetica Neue', Arial, sans-serif"
+    font-size="52"
+    font-weight="900"
+    letter-spacing="3"
+    fill="#1A2E6E"
   >SK DENTAL</text>
 
-  <line x1="110" y1="564" x2="286" y2="564" stroke="var(--skd-tagline,#7D90B6)" stroke-width="3" />
+  <!-- Tagline with flanking rules -->
+  <line x1="34"  y1="444" x2="112" y2="444" stroke="#8A99C2" stroke-width="2"/>
   <text
-    x="450"
-    y="570"
+    x="200"
+    y="449"
     text-anchor="middle"
-    font-family="Inter, 'Helvetica Neue', Arial, sans-serif"
-    font-size="30"
-    font-weight="500"
-    fill="var(--skd-tagline,#7D90B6)"
+    font-family="'Arial', 'Helvetica Neue', Arial, sans-serif"
+    font-size="18"
+    font-weight="400"
+    fill="#8A99C2"
+    letter-spacing="0.5"
   >Your Smile, Our Priority</text>
-  <line x1="614" y1="564" x2="790" y2="564" stroke="var(--skd-tagline,#7D90B6)" stroke-width="3" />
+  <line x1="288" y1="444" x2="366" y2="444" stroke="#8A99C2" stroke-width="2"/>
+
 </svg>
