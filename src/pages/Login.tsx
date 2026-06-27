@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Lock } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
+import { initializeSecureStorage } from '@/lib/secureLocalStorage'
 import clinicConfig from '@/config/clinic.json'
 
 export function Login() {
@@ -19,6 +20,7 @@ export function Login() {
     await new Promise((r) => setTimeout(r, 400))
 
     if (password === '6307') {
+      await initializeSecureStorage(password)
       localStorage.setItem(clinicConfig.storageKeys.auth, 'true')
       navigate('/dashboard')
     } else {

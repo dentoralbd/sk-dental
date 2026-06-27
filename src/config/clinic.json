@@ -6,8 +6,12 @@
   "logoPath": "/sk-dental-logo.svg",
   "storageKeys": {
     "auth": "sk_dental_auth",
+    "actorId": "sk_dental_actor_id",
     "localMedications": "sk_dental_local_medications",
-    "localInvestigations": "sk_dental_local_investigations"
+    "localInvestigations": "sk_dental_local_investigations",
+    "doctorProfile": "sk_dental_doctor_profile",
+    "prescriptionTemplates": "sk_dental_prescription_templates",
+    "sessionEncryptionKey": "sk_dental_session_encryption_key"
   },
   "theme": {
     "border": "#D8E6FF",
