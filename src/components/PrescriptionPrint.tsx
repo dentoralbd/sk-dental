@@ -1,5 +1,6 @@
 import { Printer, X } from 'lucide-react'
 import { format, differenceInYears } from 'date-fns'
+import clinicConfig from '@/config/clinic.json'
 
 interface PrescriptionPrintProps {
   prescription: {
@@ -52,6 +53,11 @@ export function PrescriptionPrint({ prescription, patient, doctor, onClose }: Pr
   const filteredMeds = prescription.medications.filter((m) => m.name?.trim())
   const filteredInvs = prescription.investigations.filter((i) => i.name?.trim())
 
+  const printColorStyle: React.CSSProperties = {
+    WebkitPrintColorAdjust: 'exact',
+    printColorAdjust: 'exact',
+  }
+
   return (
     <div className="prescription-print-overlay fixed inset-0 bg-black/70 z-[100] flex items-start justify-center p-4 overflow-y-auto print:bg-white">
       {/* Action bar – hidden on print */}
@@ -75,13 +81,38 @@ export function PrescriptionPrint({ prescription, patient, doctor, onClose }: Pr
       {/* Prescription document */}
       <div
         id="prescription-print-root"
-        className="prescription-print-container bg-white w-full max-w-2xl my-16 print:my-0 rounded-2xl print:rounded-none shadow-2xl print:shadow-none p-8 print:p-6 text-gray-900"
+        className="prescription-print-container bg-white w-full max-w-2xl my-16 print:my-0 rounded-2xl print:rounded-none shadow-2xl print:shadow-none p-8 print:p-6 text-gray-900 relative"
         style={{ fontFamily: "'Times New Roman', Times, serif" }}
       >
+        {/* Subtle watermark behind Rx body */}
+        <div
+          className="absolute inset-0 flex items-center justify-center pointer-events-none"
+          style={{ opacity: 0.05, zIndex: 0 }}
+          aria-hidden="true"
+        >
+          <img src={clinicConfig.markPath} alt="" style={{ width: 300, height: 'auto' }} />
+        </div>
+
+        {/* All content above watermark */}
+        <div style={{ position: 'relative', zIndex: 1 }}>
+
         {/* ── Letterhead ── */}
-        <div className="border-b-2 border-gray-800 pb-4 mb-4">
-          <div className="flex justify-between items-start">
-            <div>
+        <div
+          className="pb-4 mb-3"
+          style={{
+            borderBottom: '1px solid #0F52BA',
+            ...printColorStyle,
+          }}
+        >
+          <div className="flex items-start gap-4">
+            {/* Clinic logo */}
+            <img
+              src={clinicConfig.logoPath}
+              alt={clinicConfig.name}
+              style={{ height: 64, width: 'auto', flexShrink: 0 }}
+            />
+            {/* Doctor credentials */}
+            <div className="flex-1">
               <div className="text-xl font-bold text-gray-900 leading-tight">
                 {doctor.full_name
                   ? `Dr. ${doctor.full_name.replace(/^Dr\.?\s*/i, '')}`
@@ -105,10 +136,15 @@ export function PrescriptionPrint({ prescription, patient, doctor, onClose }: Pr
                 {doctor.email && <span>Email: {doctor.email}</span>}
               </div>
             </div>
-            <div className="text-right text-sm text-gray-600">
+            {/* Date */}
+            <div className="text-right text-sm text-gray-600 flex-shrink-0">
               <div className="font-medium">Date:</div>
               <div>{format(new Date(prescription.prescribed_date), 'dd MMM yyyy')}</div>
             </div>
+          </div>
+          {/* Clinic tagline below letterhead band */}
+          <div className="text-xs text-gray-400 italic mt-2 text-center tracking-wide">
+            {clinicConfig.tagline}
           </div>
         </div>
 
@@ -239,6 +275,20 @@ export function PrescriptionPrint({ prescription, patient, doctor, onClose }: Pr
             )}
           </div>
         </div>
+
+        {/* ── Print footer band ── */}
+        <div
+          className="mt-4 pt-2 flex justify-between items-center text-xs text-gray-400"
+          style={{
+            borderTop: '1px solid #0F52BA',
+            ...printColorStyle,
+          }}
+        >
+          <span>{clinicConfig.name}</span>
+          <span className="italic">{clinicConfig.tagline}</span>
+        </div>
+
+        </div>{/* end zIndex:1 content wrapper */}
       </div>
     </div>
   )

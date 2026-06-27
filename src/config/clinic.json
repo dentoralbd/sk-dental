@@ -4,6 +4,7 @@
   "tagline": "Your Smile, Our Priority",
   "appTitle": "SK Dental - Dental Clinic Management",
   "logoPath": "/sk-dental-logo.svg",
+  "markPath": "/sk-dental-mark.svg",
   "storageKeys": {
     "auth": "sk_dental_auth",
     "actorId": "sk_dental_actor_id",
