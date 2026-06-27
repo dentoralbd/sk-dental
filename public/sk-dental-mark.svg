@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 460" fill="none" style="color:var(--skd-primary,#1A2B6B)" aria-labelledby="skd-mark-title skd-mark-desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 460" fill="none" aria-labelledby="skd-mark-title skd-mark-desc">
   <title id="skd-mark-title">SK Dental Mark</title>
   <desc id="skd-mark-desc">SK Dental tooth and SK monogram mark</desc>
 
@@ -15,14 +15,14 @@
        C277 348 294 329 300 304
        C312 255 328 213 328 170
        C328 90 280 40 210 40 Z"
-    stroke="currentColor"
+    stroke="var(--skd-primary,#1A2B6B)"
     stroke-width="12"
     fill="none"
     stroke-linecap="round"
     stroke-linejoin="round"
   />
 
-  <g stroke="currentColor" stroke-width="11" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <g stroke="var(--skd-primary,#1A2B6B)" stroke-width="11" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
     <path d="M159 166 C177 146 215 147 217 171 C219 193 176 191 175 214 C174 237 208 243 227 224" />
     <path d="M244 146 L244 238" />
     <path d="M244 195 C256 179 269 163 284 145" />
