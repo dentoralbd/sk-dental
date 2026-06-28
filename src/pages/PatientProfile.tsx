@@ -7,6 +7,7 @@ import { InvoiceModal } from '@/components/InvoiceModal'
 import { PaymentEntryModal } from '@/components/PaymentEntryModal'
 import { PaymentHistoryPanel } from '@/components/PaymentHistoryPanel'
 import { PrescriptionPrint } from '@/components/PrescriptionPrint'
+import { DrugPicker } from '@/components/DrugPicker'
 import { buildInvoiceItemPreview, extractTreatmentIdsFromInvoiceItems, formatInvoiceItemLabel, getInvoiceItemLineTotal, getInvoiceItemSubtotal } from '@/lib/billing'
 import { supabase } from '@/lib/supabase'
 import { MEMORY_KEYS, rememberItem, getMemory } from '@/lib/prescriptionMemory'
@@ -2613,13 +2614,24 @@ function PrescriptionFormModal({
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
                     <div className="md:col-span-2">
                       <label className="block text-xs font-medium text-gray-500 mb-1">Drug Name</label>
-                      <input
-                        type="text"
-                        placeholder="e.g., Amoxicillin 500mg"
+                      <DrugPicker
                         value={med.name}
-                        onChange={(e) => {
+                        onChange={(value) => {
                           const newMeds = [...formData.medications]
-                          newMeds[index] = { ...newMeds[index], name: e.target.value }
+                          newMeds[index] = { ...newMeds[index], name: value }
+                          setFormData({ ...formData, medications: newMeds })
+                        }}
+                        onDrugSelect={(drug) => {
+                          const newMeds = [...formData.medications]
+                          newMeds[index] = {
+                            ...newMeds[index],
+                            name: drug.name,
+                            dosage: drug.dosage,
+                            frequency: drug.frequency,
+                            duration: drug.duration,
+                            instructions: drug.instructions,
+                            route: drug.route,
+                          }
                           setFormData({ ...formData, medications: newMeds })
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
