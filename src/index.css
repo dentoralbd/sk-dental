@@ -159,10 +159,16 @@
   }
   .prescription-print-container {
     margin: 0;
-    padding: 20px;
+    padding: 20px 20px 150px 20px;
     font-family: 'Times New Roman', Times, serif;
     box-shadow: none !important;
     border-radius: 0 !important;
     position: relative !important;
+  }
+  .prescription-print-footer {
+    position: fixed;
+    left: 20px;
+    right: 20px;
+    bottom: 20px;
   }
 }
