@@ -29,7 +29,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       <aside
         className={`
           fixed lg:static inset-y-0 left-0 z-50
-          w-64 bg-white border-r border-gray-200
+          w-64 bg-white border-r border-gray-200 shadow-elevation-md
           transform transition-transform duration-200 ease-in-out
           lg:translate-x-0
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
@@ -38,7 +38,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <div className="flex flex-col h-full">
           <div className="flex items-center justify-between p-6 border-b border-gray-200">
             <div className="flex items-center gap-3">
-              <img src={clinicConfig.logoPath} alt={`${clinicConfig.name} logo`} className="h-12 w-12 rounded-2xl object-contain bg-primary/5 p-1" />
+              <img src={clinicConfig.logoPath} alt={`${clinicConfig.name} logo`} className="h-12 w-12 rounded-2xl object-contain bg-gradient-to-br from-primary/10 to-highlight/10 p-1 shadow-elevation-low" />
               <div>
                 <h1 className="text-2xl font-bold text-primary">{clinicConfig.name}</h1>
                 <p className="text-sm text-text-secondary">{clinicConfig.managementLabel}</p>
@@ -47,7 +47,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             <button
               onClick={onClose}
               aria-label="Close sidebar"
-              className="lg:hidden icon-button p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="lg:hidden icon-button p-2 hover:bg-gray-100 hover:shadow-elevation-low rounded-lg transition-all duration-150"
             >
               <X className="w-5 h-5 text-text-secondary" />
             </button>
@@ -60,10 +60,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 to={item.path}
                 onClick={onClose}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                  `flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-150 ${
                     isActive
-                      ? 'bg-primary text-white'
-                      : 'text-text-secondary hover:bg-gray-100 hover:text-text-primary'
+                      ? 'bg-gradient-to-r from-primary to-primary-hover text-white shadow-elevation-low'
+                      : 'text-text-secondary hover:bg-primary/5 hover:text-primary'
                   }`
                 }
               >
@@ -78,10 +78,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                 to="/doctor-profile"
                 onClick={onClose}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                  `flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-150 ${
                     isActive
-                      ? 'bg-primary text-white'
-                      : 'text-text-secondary hover:bg-gray-100 hover:text-text-primary'
+                      ? 'bg-gradient-to-r from-primary to-primary-hover text-white shadow-elevation-low'
+                      : 'text-text-secondary hover:bg-primary/5 hover:text-primary'
                   }`
                 }
               >
