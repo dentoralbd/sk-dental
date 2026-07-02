@@ -14,6 +14,8 @@ export interface DoctorProfileData {
   phone: string
   email: string
   bmdc_reg: string
+  /** Prescription header logo as a data URL — stored locally only, never sent to Supabase */
+  logo_data?: string
   updated_at?: string
 }
 
@@ -55,8 +57,9 @@ export async function loadDoctorProfile() {
     if (error) throw error
 
     if (data) {
-      await writeLocalDoctorProfile(data)
-      return data as DoctorProfileData
+      const merged: DoctorProfileData = { ...(data as DoctorProfileData), logo_data: localProfile?.logo_data }
+      await writeLocalDoctorProfile(merged)
+      return merged
     }
   } catch (error) {
     console.error('Error loading doctor profile from Supabase:', error)
@@ -81,7 +84,7 @@ export async function saveDoctorProfile(profile: DoctorProfileData) {
     return nextProfile
   }
 
-  const { id: _id, ...payloadWithoutId } = {
+  const { id: _id, logo_data: _logo, ...payloadWithoutId } = {
     ...nextProfile,
     user_id: userId,
   } as any
@@ -94,6 +97,7 @@ export async function saveDoctorProfile(profile: DoctorProfileData) {
 
   if (error) throw error
 
-  await writeLocalDoctorProfile(data)
-  return data as DoctorProfileData
+  const savedProfile: DoctorProfileData = { ...(data as DoctorProfileData), logo_data: nextProfile.logo_data }
+  await writeLocalDoctorProfile(savedProfile)
+  return savedProfile
 }
