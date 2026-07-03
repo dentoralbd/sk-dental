@@ -28,7 +28,7 @@ import { DrugPicker } from '@/components/DrugPicker'
 import { MedicalHistoryFields } from '@/components/MedicalHistoryFields'
 import { getMedicalHistoryChecks, buildMedicalHistoryString } from '@/lib/medicalHistory'
 import { mapEntryToOperation } from '@/lib/treatmentPlan'
-import { type ClinicalEntry, createEmptyEntry, entriesToText, textToEntries } from '@/lib/clinicalEntries'
+import { type ClinicalEntry, collectSuggestedTeeth, createEmptyEntry, entriesToText, textToEntries } from '@/lib/clinicalEntries'
 import { MultiEntryClinicalField } from '@/components/MultiEntryClinicalField'
 import { getAgeTierFromDOB, deriveDateOfBirthFromAge, AGE_TIER_LABELS, type AgeTier } from '@/lib/ageTier'
 import { WEIGHT_DOSING_FORMULAS } from '@/lib/weightDosingFormulas'
@@ -915,6 +915,7 @@ export function Prescriptions() {
                 onChange={(entries) => setFormData({ ...formData, chief_complaint_entries: entries })}
                 placeholder="e.g., Toothache, Bleeding gums, Sensitivity to cold..."
                 memoryKey={MEMORY_KEYS.COMPLAINTS}
+                pickerMode="quadrant"
                 templates={{
                   list: complaintTemplates,
                   show: showComplaintTemplates,
@@ -949,6 +950,7 @@ export function Prescriptions() {
                 onChange={(entries) => setFormData({ ...formData, diagnosis_entries: entries })}
                 placeholder="Enter diagnosis"
                 helperText="e.g., Dental caries (K02.1), Periapical abscess (K04.7)"
+                suggestedTeeth={collectSuggestedTeeth([formData.on_examination_entries])}
               />
 
               {/* ── Treatment Plan ── */}
@@ -958,6 +960,7 @@ export function Prescriptions() {
                 onChange={(entries) => setFormData({ ...formData, treatment_plan_entries: entries })}
                 placeholder="e.g., RCT + Cap"
                 helperText="Each entry is added to this patient's Operations tab as its own treatment record, individually selectable for invoicing."
+                suggestedTeeth={collectSuggestedTeeth([formData.on_examination_entries, formData.diagnosis_entries])}
               />
 
               {/* ── Medications ── */}

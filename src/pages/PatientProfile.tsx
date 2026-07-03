@@ -2818,6 +2818,7 @@ function PrescriptionFormModal({
             onChange={(entries: ClinicalEntry[]) => setFormData({ ...formData, chief_complaint_entries: entries })}
             placeholder="e.g., Toothache, Bleeding gums, Sensitivity to cold..."
             memoryKey={MEMORY_KEYS.COMPLAINTS}
+            pickerMode="quadrant"
             templates={{
               list: complaintTemplates,
               show: showComplaintTemplates,
