@@ -1,11 +1,16 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Lock } from 'lucide-react'
+import { Lock, Stethoscope, UserCog } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { initializeSecureStorage } from '@/lib/secureLocalStorage'
+import { setAppRole, type AppRole } from '@/lib/appSession'
 import clinicConfig from '@/config/clinic.json'
 
+const DOCTOR_PASSWORD = '6307'
+const OPERATOR_PASSWORD = '5555'
+
 export function Login() {
+  const [role, setRole] = useState<AppRole | null>(null)
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -14,13 +19,20 @@ export function Login() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (!role) return
     setLoading(true)
 
     // brief delay for perceived security
     await new Promise((r) => setTimeout(r, 400))
 
-    if (password === '6307') {
-      await initializeSecureStorage(password)
+    const expectedPassword = role === 'doctor' ? DOCTOR_PASSWORD : OPERATOR_PASSWORD
+
+    if (password === expectedPassword) {
+      // Always derive the secure-storage encryption key from the doctor
+      // password, regardless of role, so previously-encrypted data (doctor
+      // profile, prescription memory) stays readable for both roles.
+      await initializeSecureStorage(DOCTOR_PASSWORD)
+      setAppRole(role)
       localStorage.setItem(clinicConfig.storageKeys.auth, 'true')
       navigate('/dashboard')
     } else {
@@ -30,6 +42,12 @@ export function Login() {
       setShake(true)
       setTimeout(() => setShake(false), 500)
     }
+  }
+
+  function handleBack() {
+    setRole(null)
+    setPassword('')
+    setError('')
   }
 
   return (
@@ -43,42 +61,81 @@ export function Login() {
           <p className="text-text-secondary">{clinicConfig.tagline}</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value)
-                setError('')
-              }}
-              placeholder="Enter password"
-              className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors ${
-                error ? 'border-red-400 bg-red-50' : 'border-gray-300'
-              }`}
-              autoFocus
-              disabled={loading}
-            />
-            {error && (
-              <p className="mt-2 text-sm text-red-600">{error}</p>
-            )}
-          </div>
+        {!role ? (
+          <div className="space-y-4">
+            <p className="text-center text-sm font-medium text-gray-700">Continue as</p>
 
-          <Button type="submit" className="w-full py-3" disabled={loading}>
-            {loading ? (
-              <span className="flex items-center justify-center gap-2">
-                <span className="spinner spinner-sm" />
-                Verifying...
+            <button
+              type="button"
+              onClick={() => setRole('doctor')}
+              className="w-full flex items-center gap-4 px-5 py-4 border-2 border-primary/30 rounded-xl hover:border-primary hover:bg-primary/5 transition-colors text-left"
+            >
+              <Stethoscope className="w-8 h-8 text-primary shrink-0" />
+              <span>
+                <span className="block font-semibold text-gray-900">Login as Doctor</span>
+                <span className="block text-sm text-text-secondary">Full access — can change or delete any data</span>
               </span>
-            ) : (
-              'Login'
-            )}
-          </Button>
-        </form>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setRole('operator')}
+              className="w-full flex items-center gap-4 px-5 py-4 border-2 border-gray-200 rounded-xl hover:border-gray-400 hover:bg-gray-50 transition-colors text-left"
+            >
+              <UserCog className="w-8 h-8 text-gray-500 shrink-0" />
+              <span>
+                <span className="block font-semibold text-gray-900">Login as Operator</span>
+                <span className="block text-sm text-text-secondary">Can add and edit data, but cannot delete</span>
+              </span>
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+                {role === 'doctor' ? 'Doctor Password' : 'Operator Password'}
+              </label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value)
+                  setError('')
+                }}
+                placeholder="Enter password"
+                className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-colors ${
+                  error ? 'border-red-400 bg-red-50' : 'border-gray-300'
+                }`}
+                autoFocus
+                disabled={loading}
+              />
+              {error && (
+                <p className="mt-2 text-sm text-red-600">{error}</p>
+              )}
+            </div>
+
+            <Button type="submit" className="w-full py-3" disabled={loading}>
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="spinner spinner-sm" />
+                  Verifying...
+                </span>
+              ) : (
+                'Login'
+              )}
+            </Button>
+
+            <button
+              type="button"
+              onClick={handleBack}
+              className="w-full text-sm text-text-secondary hover:text-gray-900 transition-colors"
+              disabled={loading}
+            >
+              Back
+            </button>
+          </form>
+        )}
 
         <div className="mt-6 text-center text-sm text-text-secondary">
           <p className="inline-flex items-center gap-2">

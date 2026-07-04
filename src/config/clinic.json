@@ -7,6 +7,7 @@
   "markPath": "/sk-dental-mark.svg",
   "storageKeys": {
     "auth": "sk_dental_auth",
+    "role": "sk_dental_role",
     "actorId": "sk_dental_actor_id",
     "localMedications": "sk_dental_local_medications",
     "localInvestigations": "sk_dental_local_investigations",

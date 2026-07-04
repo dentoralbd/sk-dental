@@ -34,6 +34,8 @@ import { FinancialReportsPanel } from '@/components/FinancialReportsPanel'
 import { InvoiceSettingsModal } from '@/components/InvoiceSettingsModal'
 import { supabase } from '@/lib/supabase'
 import { safeFormat, formatBDT } from '@/lib/utils'
+import { canDelete } from '@/lib/appSession'
+import { logDeletion } from '@/lib/deleteHistory'
 
 interface Invoice {
   id: string
@@ -206,9 +208,19 @@ export function Billing() {
   }
 
   async function deleteInvoice(id: string) {
+    if (!canDelete()) return
     if (!confirm('Delete this invoice?')) return
 
     try {
+      const invoice = invoices.find((inv) => inv.id === id)
+      await logDeletion({
+        entityType: 'invoice',
+        entityId: id,
+        entityLabel: invoice?.invoice_number || 'Invoice',
+        patientId: (invoice as any)?.patient_id ?? null,
+        patientName: invoice ? `${(invoice as any).patients?.first_name || ''} ${(invoice as any).patients?.last_name || ''}`.trim() || null : null,
+        payload: invoice || { id },
+      })
       const { error } = await supabase.from('invoices').delete().eq('id', id)
       if (error) throw error
       setInvoices((prev) => prev.filter((invoice) => invoice.id !== id))
@@ -721,7 +733,9 @@ function InvoiceRow({
             >
               <Mail className="w-4 h-4 mr-1" />Email
             </Button>
-            <Button variant="outline" size="sm" onClick={onDelete}>Delete</Button>
+            {canDelete() && (
+              <Button variant="outline" size="sm" onClick={onDelete}>Delete</Button>
+            )}
             <button className="p-1 text-text-secondary hover:text-text-primary transition-colors" onClick={() => setExpanded((prev) => !prev)}>
               {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>
