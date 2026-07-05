@@ -45,6 +45,7 @@ import clinicConfig from '@/config/clinic.json'
 import { safeFormat, formatBDT } from '@/lib/utils'
 import { canDelete } from '@/lib/appSession'
 import { logDeletion } from '@/lib/deleteHistory'
+import { logEdit } from '@/lib/editHistory'
 import { matchesPatientSearch } from '@/lib/patients'
 
 interface Invoice {
@@ -224,6 +225,17 @@ export function Billing() {
 
   async function markAsPaid(id: string, totalAmount: number) {
     try {
+      const previousInvoice = invoices.find((inv) => inv.id === id)
+      if (previousInvoice) {
+        await logEdit({
+          entityType: 'invoice',
+          entityId: id,
+          entityLabel: (previousInvoice as any).invoice_number || 'Invoice',
+          patientId: (previousInvoice as any).patient_id ?? null,
+          patientName: `${(previousInvoice as any).patients?.first_name || ''} ${(previousInvoice as any).patients?.last_name || ''}`.trim() || null,
+          previousPayload: previousInvoice,
+        })
+      }
       const { error } = await supabase
         .from('invoices')
         .update({
@@ -282,6 +294,17 @@ export function Billing() {
 
       for (const update of updates) {
         const { id, ...payload } = update
+        const previousInvoice = invoices.find((inv) => inv.id === id)
+        if (previousInvoice) {
+          await logEdit({
+            entityType: 'invoice',
+            entityId: id,
+            entityLabel: (previousInvoice as any).invoice_number || 'Invoice',
+            patientId: (previousInvoice as any).patient_id ?? null,
+            patientName: `${(previousInvoice as any).patients?.first_name || ''} ${(previousInvoice as any).patients?.last_name || ''}`.trim() || null,
+            previousPayload: previousInvoice,
+          })
+        }
         const { error } = await supabase
           .from('invoices')
           .update(payload)

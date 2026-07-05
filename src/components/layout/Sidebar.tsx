@@ -131,7 +131,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       <span className={iconChipClass(isActive)}>
                         <UserCircle className="w-5 h-5" />
                       </span>
-                      <span>Doctor Profile</span>
+                      <span>Doctor Zone</span>
                     </>
                   )}
                 </NavLink>
