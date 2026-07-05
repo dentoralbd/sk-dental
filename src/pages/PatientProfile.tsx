@@ -2472,6 +2472,7 @@ export function PatientProfile() {
             first_name: patient.first_name,
             last_name: patient.last_name,
             phone: patient.phone,
+            email: patient.email,
             patient_code: patient.patient_code,
           }}
           doctor={doctorProfile}
