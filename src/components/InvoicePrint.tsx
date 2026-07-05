@@ -352,6 +352,7 @@ export function InvoicePrint({ invoices, patient, doctor, initialDueOnly, onClos
       dueOnly,
       showItems,
       payments: showPayments ? visiblePayments : [],
+      logoSrc,
     })
     const fileName = invoicePdfFileName(visibleInvoices, patient)
     const subject = combined
