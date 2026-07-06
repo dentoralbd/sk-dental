@@ -38,7 +38,6 @@ import { FinancialReportsPanel } from '@/components/FinancialReportsPanel'
 import { InvoiceSettingsModal } from '@/components/InvoiceSettingsModal'
 import { supabase } from '@/lib/supabase'
 import { loadDoctorProfile, type DoctorProfileData } from '@/lib/doctorProfile'
-import { buildInvoicePdf, invoicePdfFileName } from '@/lib/invoicePdf'
 import { sharePdf, toWhatsAppNumber } from '@/lib/sharePdf'
 import { resolveLogoSrc } from '@/lib/logoImage'
 import clinicConfig from '@/config/clinic.json'
@@ -394,6 +393,7 @@ export function Billing() {
       return
     }
 
+    const { buildInvoicePdf, invoicePdfFileName } = await import('@/lib/invoicePdf')
     const doctor = await ensureDoctorProfile()
     const logoSrc = await resolveLogoSrc(doctor, clinicConfig.logoPath)
     const patientInfo = patient || { first_name: 'Unknown', last_name: 'Patient', patient_code: null, phone: null }
