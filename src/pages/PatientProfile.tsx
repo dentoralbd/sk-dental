@@ -48,6 +48,7 @@ import clinicConfig from '@/config/clinic.json'
 import { canDelete } from '@/lib/appSession'
 import { logDeletion } from '@/lib/deleteHistory'
 import { logEdit } from '@/lib/editHistory'
+import { logActivity } from '@/lib/activityLog'
 
 interface VisitTreatmentEntry {
   key: string
@@ -410,6 +411,14 @@ export function PatientProfile() {
         cost: parseFloat(treatmentPlanForm.cost) || 0,
         notes: treatmentPlanForm.notes || null,
       })))
+      logActivity({
+        action: 'create',
+        entityType: 'treatment',
+        entityLabel: treatmentPlanForm.treatment_type,
+        patientId: id,
+        patientName: patient ? `${patient.first_name} ${patient.last_name}`.trim() : null,
+        details: `${teethList.length} planned item(s)`,
+      })
       setShowTreatmentPlanForm(false)
       setTreatmentPlanForm({ treatment_type: '', teeth: [], description: '', status: 'Planned', cost: '', notes: '' })
       loadPatientData()
@@ -510,6 +519,13 @@ export function PatientProfile() {
         patient_id: id,
         ...visitForm,
       }])
+      logActivity({
+        action: 'create',
+        entityType: 'patient_visit',
+        entityLabel: visitForm.chief_complaint || 'Visit',
+        patientId: id,
+        patientName: patient ? `${patient.first_name} ${patient.last_name}`.trim() : null,
+      })
 
       // Planned treatments ticked as done: update the existing rows (no duplicates)
       const billablePlanIds = new Set(billableFromPlan.map(({ treatment }) => treatment.id))
@@ -554,6 +570,14 @@ export function PatientProfile() {
           .select('id, treatment_type, description, tooth_number, cost')
         if (error) throw error
         insertedTreatments = data || []
+        logActivity({
+          action: 'create',
+          entityType: 'treatment',
+          entityLabel: insertedTreatments.map((t) => t.treatment_type).filter(Boolean).join(', '),
+          patientId: id,
+          patientName: patient ? `${patient.first_name} ${patient.last_name}`.trim() : null,
+          details: `${insertedTreatments.length} item(s) done at visit`,
+        })
       }
 
       const billableTreatments = [...updatedPlanTreatments, ...insertedTreatments]
@@ -612,6 +636,15 @@ export function PatientProfile() {
     if (invoiceError) throw invoiceError
     if (!invoice?.id) return
 
+    logActivity({
+      action: 'create',
+      entityType: 'invoice',
+      entityId: invoice.id,
+      patientId: id,
+      patientName: patient ? `${patient.first_name} ${patient.last_name}`.trim() : null,
+      details: `Total ${formatBDT(totalAmount)} (visit form)`,
+    })
+
     // invoice_history / is_invoiced columns arrive in later migrations — ignore if missing
     await supabase.from('invoice_history').insert({
       invoice_id: invoice.id,
@@ -649,6 +682,16 @@ export function PatientProfile() {
       }
       if (!isSchemaCompatibilityError(paymentError)) throw paymentError
       paymentSchemaError = paymentError
+    }
+
+    if (paymentStored) {
+      logActivity({
+        action: 'create',
+        entityType: 'payment',
+        patientId: id,
+        patientName: patient ? `${patient.first_name} ${patient.last_name}`.trim() : null,
+        details: `${formatBDT(paymentAmount)} (${visitPayment.method}) on new visit invoice`,
+      })
     }
 
     const { error: statusError } = await supabase
@@ -696,6 +739,16 @@ export function PatientProfile() {
       }
       if (!isSchemaCompatibilityError(paymentError)) throw paymentError
       paymentSchemaError = paymentError
+    }
+
+    if (paymentStored) {
+      logActivity({
+        action: 'create',
+        entityType: 'payment',
+        patientId: id,
+        patientName: patient ? `${patient.first_name} ${patient.last_name}`.trim() : null,
+        details: `${formatBDT(amount)} (${visitPayment.method}) against invoice ${invoice.invoice_number || invoice.id}`,
+      })
     }
 
     const newPaid = (invoice.paid_amount || 0) + amount
@@ -824,6 +877,15 @@ export function PatientProfile() {
       } else {
         const { data: inserted } = await supabase.from('prescriptions').insert([payload]).select().single()
         prescriptionId = inserted?.id || null
+        logActivity({
+          action: 'create',
+          entityType: 'prescription',
+          entityId: prescriptionId,
+          entityLabel: payload.diagnosis || 'Prescription',
+          patientId: id,
+          patientName: patient ? `${patient.first_name} ${patient.last_name}`.trim() : null,
+          details: `${(payload.medications || []).length} medication(s)`,
+        })
 
         // Save to session memory (legacy in-memory)
         for (const med of prescriptionForm.medications) {
@@ -861,6 +923,14 @@ export function PatientProfile() {
               examination_findings: flatOnExamination,
               diagnosis: entriesToText(prescriptionForm.diagnosis_entries),
             }])
+            logActivity({
+              action: 'create',
+              entityType: 'patient_visit',
+              entityLabel: flatChiefComplaint || 'Visit',
+              patientId: id,
+              patientName: patient ? `${patient.first_name} ${patient.last_name}`.trim() : null,
+              details: 'Auto-saved from prescription',
+            })
           } catch {
             // non-fatal – visit record is optional
           }
@@ -884,6 +954,7 @@ export function PatientProfile() {
         }
 
         const idsToDelete: string[] = []
+        let treatmentRowsCreated = 0
 
         for (const entry of currentEntries) {
           const rowsForEntry = rowsByEntryId.get(entry.id) || []
@@ -904,6 +975,7 @@ export function PatientProfile() {
                 notes: 'Added from prescription treatment plan',
                 ...operation,
               }])
+              treatmentRowsCreated++
             }
           }
           idsToDelete.push(...reusableRows.slice(teethList.length).map((row) => row.id))
@@ -932,6 +1004,16 @@ export function PatientProfile() {
             })
           }
           await supabase.from('treatments').delete().in('id', idsToDelete)
+        }
+
+        if (treatmentRowsCreated > 0) {
+          logActivity({
+            action: 'create',
+            entityType: 'treatment',
+            patientId: id,
+            patientName: patient ? `${patient.first_name} ${patient.last_name}`.trim() : null,
+            details: `${treatmentRowsCreated} item(s) from prescription treatment plan`,
+          })
         }
       }
 
@@ -1049,6 +1131,15 @@ export function PatientProfile() {
       const oldIds = toMerge.map((invoice: any) => invoice.id)
       const newId = data.id as string
 
+      logActivity({
+        action: 'create',
+        entityType: 'invoice',
+        entityId: newId,
+        patientId: id,
+        patientName: patient ? `${patient.first_name} ${patient.last_name}`.trim() : null,
+        details: `Merged from ${oldIds.length} invoices`,
+      })
+
       const { error: treatmentsError } = await supabase
         .from('treatments')
         .update({ invoice_id: newId })
@@ -1138,6 +1229,15 @@ export function PatientProfile() {
       }])
 
       if (dbError) throw dbError
+
+      logActivity({
+        action: 'create',
+        entityType: 'patient_file',
+        entityLabel: file.name,
+        patientId: id,
+        patientName: patient ? `${patient.first_name} ${patient.last_name}`.trim() : null,
+        details: fileCategory,
+      })
 
       loadPatientData()
     } catch (error: any) {
