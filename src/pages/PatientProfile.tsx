@@ -223,6 +223,7 @@ export function PatientProfile() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [showQuickAdd, setShowQuickAdd] = useState(false)
+  const [editingTreatment, setEditingTreatment] = useState<any | null>(null)
   const [showTreatmentPlanForm, setShowTreatmentPlanForm] = useState(false)
   const [treatmentPlanForm, setTreatmentPlanForm] = useState({
     treatment_type: '',
@@ -447,6 +448,57 @@ export function PatientProfile() {
     } catch (error) {
       console.error('Error updating treatment status:', error)
       alert('Failed to update treatment status')
+    }
+  }
+
+  async function updateTreatmentFields(treatmentId: string, patch: {
+    treatment_type: string
+    tooth_number: number | null
+    description: string | null
+    cost: number
+    status: string
+    notes: string | null
+  }) {
+    try {
+      const previous = treatments.find((t) => t.id === treatmentId)
+      if (previous) {
+        await logEdit({
+          entityType: 'treatment',
+          entityId: treatmentId,
+          entityLabel: previous.treatment_type,
+          patientId: previous.patient_id,
+          patientName: patient ? `${patient.first_name} ${patient.last_name}`.trim() : null,
+          previousPayload: previous,
+        })
+      }
+      const { error } = await supabase.from('treatments').update(patch).eq('id', treatmentId)
+      if (error) throw error
+      setTreatments((prev) => prev.map((t) => (t.id === treatmentId ? { ...t, ...patch } : t)))
+      setEditingTreatment(null)
+    } catch (error) {
+      console.error('Error updating treatment:', error)
+      alert('Failed to update treatment')
+    }
+  }
+
+  async function deleteTreatmentRow(treatment: any) {
+    if (!canDelete()) return
+    if (!confirm('Delete this treatment?')) return
+    try {
+      await logDeletion({
+        entityType: 'treatment',
+        entityId: treatment.id,
+        entityLabel: treatment.treatment_type,
+        patientId: treatment.patient_id,
+        patientName: patient ? `${patient.first_name} ${patient.last_name}`.trim() : null,
+        payload: treatment,
+      })
+      const { error } = await supabase.from('treatments').delete().eq('id', treatment.id)
+      if (error) throw error
+      setTreatments((prev) => prev.filter((t) => t.id !== treatment.id))
+    } catch (error) {
+      console.error('Error deleting treatment:', error)
+      alert('Failed to delete treatment')
     }
   }
 
@@ -2005,6 +2057,7 @@ export function PatientProfile() {
                 <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">Status</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">Cost</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-text-secondary uppercase">Billing</th>
+                <th className="px-4 py-3 text-right text-xs font-medium text-text-secondary uppercase">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
@@ -2041,6 +2094,28 @@ export function PatientProfile() {
                     <span className={`px-2 py-1 text-xs rounded-full ${isLinked ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'}`}>
                       {isLinked ? 'Invoiced' : 'Ready to bill'}
                     </span>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setEditingTreatment(treatment)}
+                        className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-lg"
+                        title="Edit"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      {canDelete() && (
+                        <button
+                          type="button"
+                          onClick={() => deleteTreatmentRow(treatment)}
+                          className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
                   )
@@ -3026,6 +3101,15 @@ export function PatientProfile() {
           dentitionType={patientDentition}
           onSubmit={handleTreatmentPlanSubmit}
           onClose={() => setShowTreatmentPlanForm(false)}
+        />
+      )}
+
+      {editingTreatment && (
+        <EditTreatmentModal
+          treatment={editingTreatment}
+          dentitionType={patientDentition}
+          onSave={updateTreatmentFields}
+          onClose={() => setEditingTreatment(null)}
         />
       )}
 
@@ -4354,6 +4438,147 @@ function PrescriptionFormModal({
               <CheckCircle className="w-4 h-4" />
               {isEditing ? 'Update Prescription' : 'Issue Prescription'}
             </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function EditTreatmentModal({ treatment, dentitionType, onSave, onClose }: {
+  treatment: any
+  dentitionType: any
+  onSave: (id: string, patch: {
+    treatment_type: string
+    tooth_number: number | null
+    description: string | null
+    cost: number
+    status: string
+    notes: string | null
+  }) => void
+  onClose: () => void
+}) {
+  const [form, setForm] = useState({
+    treatment_type: treatment.treatment_type || '',
+    tooth_number: treatment.tooth_number ?? null,
+    description: treatment.description || '',
+    cost: String(treatment.cost ?? ''),
+    status: treatment.status || 'Planned',
+    notes: treatment.notes || '',
+  })
+  const [saving, setSaving] = useState(false)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      await onSave(treatment.id, {
+        treatment_type: form.treatment_type,
+        tooth_number: form.tooth_number,
+        description: form.description || null,
+        cost: parseFloat(form.cost) || 0,
+        status: form.status,
+        notes: form.notes || null,
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-6 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white z-10">
+          <h2 className="text-xl font-bold">Edit Treatment</h2>
+          <button type="button" onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-lg">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Treatment Type *</label>
+            <select
+              required
+              value={form.treatment_type}
+              onChange={(e) => setForm({ ...form, treatment_type: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="">Select...</option>
+              <option>Filling</option>
+              <option>Root Canal</option>
+              <option>Crown</option>
+              <option>Bridge</option>
+              <option>Extraction</option>
+              <option>Implant</option>
+              <option>Cleaning</option>
+              <option>Whitening</option>
+              <option>Braces</option>
+              <option>Dentures</option>
+              <option>Scaling</option>
+              <option>Other</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Tooth</label>
+            <ToothSelector
+              selectedTeeth={form.tooth_number != null ? [form.tooth_number] : []}
+              onChange={(teeth: number[]) => setForm({ ...form, tooth_number: teeth.length > 0 ? teeth[teeth.length - 1] : null })}
+              dentitionType={dentitionType}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Description</label>
+            <textarea
+              rows={2}
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Status</label>
+              <select
+                value={form.status}
+                onChange={(e) => setForm({ ...form, status: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option>Planned</option>
+                <option>In Progress</option>
+                <option>Completed</option>
+                <option>Cancelled</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Cost *</label>
+              <input
+                type="number"
+                step="0.01"
+                required
+                value={form.cost}
+                onChange={(e) => setForm({ ...form, cost: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Notes</label>
+            <textarea
+              rows={2}
+              value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</Button>
           </div>
         </form>
       </div>

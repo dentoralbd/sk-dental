@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Search, Activity, ChevronDown } from 'lucide-react'
+import { Plus, Search, Activity, ChevronDown, Pencil, X } from 'lucide-react'
 import { Button } from '@/components/ui/Button'
 import { supabase } from '@/lib/supabase'
 import { canDelete } from '@/lib/appSession'
@@ -23,6 +23,7 @@ interface Treatment {
   patients: {
     first_name: string
     last_name: string
+    date_of_birth?: string | null
   }
 }
 
@@ -31,6 +32,7 @@ export function Treatments() {
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [editingTreatment, setEditingTreatment] = useState<Treatment | null>(null)
 
   useEffect(() => {
     loadTreatments()
@@ -43,7 +45,7 @@ export function Treatments() {
         .from('treatments')
         .select(`
           *,
-          patients (first_name, last_name)
+          patients (first_name, last_name, date_of_birth)
         `)
         .order('created_at', { ascending: false })
 
@@ -107,6 +109,37 @@ export function Treatments() {
     }
   }
 
+  async function updateTreatmentFields(id: string, patch: {
+    treatment_type: string
+    tooth_number: number | null
+    description: string | null
+    cost: number
+    status: string
+    notes: string | null
+  }) {
+    try {
+      const previous = treatments.find((t) => t.id === id)
+      if (previous) {
+        const patientName = `${previous.patients?.first_name ?? ''} ${previous.patients?.last_name ?? ''}`.trim()
+        await logEdit({
+          entityType: 'treatment',
+          entityId: id,
+          entityLabel: previous.treatment_type,
+          patientId: previous.patient_id,
+          patientName: patientName || null,
+          previousPayload: previous,
+        })
+      }
+      const { error } = await supabase.from('treatments').update(patch).eq('id', id)
+      if (error) throw error
+      setTreatments((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)))
+      setEditingTreatment(null)
+    } catch (error) {
+      console.error('Error updating treatment:', error)
+      alert('Failed to update treatment')
+    }
+  }
+
   const filteredTreatments = treatments.filter(
     (t) =>
       (t.patients?.first_name ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -159,6 +192,7 @@ export function Treatments() {
                 treatments={group.treatments}
                 onDelete={deleteTreatment}
                 onStatusChange={updateTreatmentStatus}
+                onEdit={setEditingTreatment}
               />
             ))}
           </div>
@@ -169,6 +203,15 @@ export function Treatments() {
         <TreatmentModal
           onClose={() => setShowModal(false)}
           onSave={() => { loadTreatments(); setShowModal(false) }}
+        />
+      )}
+
+      {editingTreatment && (
+        <EditTreatmentModal
+          treatment={editingTreatment}
+          dentitionType={getDentitionTypeFromDOB(editingTreatment.patients?.date_of_birth)}
+          onSave={updateTreatmentFields}
+          onClose={() => setEditingTreatment(null)}
         />
       )}
     </div>
@@ -192,11 +235,12 @@ function groupTreatmentsByPatient(treatments: Treatment[]) {
   return order.map((patientId) => groups.get(patientId)!)
 }
 
-function PatientTreatmentGroup({ patientName, treatments, onDelete, onStatusChange }: {
+function PatientTreatmentGroup({ patientName, treatments, onDelete, onStatusChange, onEdit }: {
   patientName: string
   treatments: Treatment[]
   onDelete: (treatment: Treatment) => void
   onStatusChange: (id: string, status: string) => void
+  onEdit: (treatment: Treatment) => void
 }) {
   const [expanded, setExpanded] = useState(false)
 
@@ -221,6 +265,7 @@ function PatientTreatmentGroup({ patientName, treatments, onDelete, onStatusChan
               treatment={treatment}
               onDelete={() => onDelete(treatment)}
               onStatusChange={(status) => onStatusChange(treatment.id, status)}
+              onEdit={() => onEdit(treatment)}
             />
           ))}
         </div>
@@ -234,10 +279,11 @@ const STATUS_TRANSITIONS: Record<string, string> = {
   'In Progress': 'Completed',
 }
 
-function TreatmentRow({ treatment, onDelete, onStatusChange }: {
+function TreatmentRow({ treatment, onDelete, onStatusChange, onEdit }: {
   treatment: Treatment
   onDelete: () => void
   onStatusChange: (status: string) => void
+  onEdit: () => void
 }) {
   const statusColors: Record<string, string> = {
     Planned: 'bg-blue-100 text-blue-700',
@@ -276,12 +322,160 @@ function TreatmentRow({ treatment, onDelete, onStatusChange }: {
               → {nextStatus}
             </button>
           )}
+          <button
+            onClick={onEdit}
+            className="p-1.5 text-gray-500 hover:bg-gray-100 rounded-lg"
+            title="Edit"
+          >
+            <Pencil className="w-4 h-4" />
+          </button>
           {canDelete() && (
             <Button variant="outline" size="sm" onClick={onDelete}>
               Delete
             </Button>
           )}
         </div>
+      </div>
+    </div>
+  )
+}
+
+function EditTreatmentModal({ treatment, dentitionType, onSave, onClose }: {
+  treatment: Treatment
+  dentitionType: any
+  onSave: (id: string, patch: {
+    treatment_type: string
+    tooth_number: number | null
+    description: string | null
+    cost: number
+    status: string
+    notes: string | null
+  }) => void
+  onClose: () => void
+}) {
+  const [form, setForm] = useState({
+    treatment_type: treatment.treatment_type || '',
+    tooth_number: treatment.tooth_number ?? null,
+    description: treatment.description || '',
+    cost: String(treatment.cost ?? ''),
+    status: treatment.status || 'Planned',
+    notes: treatment.notes || '',
+  })
+  const [saving, setSaving] = useState(false)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      await onSave(treatment.id, {
+        treatment_type: form.treatment_type,
+        tooth_number: form.tooth_number,
+        description: form.description || null,
+        cost: parseFloat(form.cost) || 0,
+        status: form.status,
+        notes: form.notes || null,
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-6 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white z-10">
+          <h2 className="text-xl font-bold">Edit Treatment</h2>
+          <button type="button" onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-lg">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Treatment Type *</label>
+            <select
+              required
+              value={form.treatment_type}
+              onChange={(e) => setForm({ ...form, treatment_type: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="">Select...</option>
+              <option>Filling</option>
+              <option>Root Canal</option>
+              <option>Crown</option>
+              <option>Bridge</option>
+              <option>Extraction</option>
+              <option>Implant</option>
+              <option>Cleaning</option>
+              <option>Whitening</option>
+              <option>Braces</option>
+              <option>Dentures</option>
+              <option>Scaling</option>
+              <option>Other</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Tooth</label>
+            <ToothSelector
+              selectedTeeth={form.tooth_number != null ? [form.tooth_number] : []}
+              onChange={(teeth: number[]) => setForm({ ...form, tooth_number: teeth.length > 0 ? teeth[teeth.length - 1] : null })}
+              dentitionType={dentitionType}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Description</label>
+            <textarea
+              rows={2}
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1">Status</label>
+              <select
+                value={form.status}
+                onChange={(e) => setForm({ ...form, status: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              >
+                <option>Planned</option>
+                <option>In Progress</option>
+                <option>Completed</option>
+                <option>Cancelled</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Cost *</label>
+              <input
+                type="number"
+                step="0.01"
+                required
+                value={form.cost}
+                onChange={(e) => setForm({ ...form, cost: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Notes</label>
+            <textarea
+              rows={2}
+              value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</Button>
+          </div>
+        </form>
       </div>
     </div>
   )
