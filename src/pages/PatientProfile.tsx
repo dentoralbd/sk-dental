@@ -2682,7 +2682,7 @@ export function PatientProfile() {
   }
 
   return (
-    <div className="space-y-6 pb-24 md:pb-6 page-fade-in">
+    <div className="space-y-6 pb-40 md:pb-6 page-fade-in">
       <div className="flex items-center gap-3">
         <Button variant="outline" size="sm" onClick={() => navigate('/patients')}>
           <ArrowLeft className="w-4 h-4 mr-2" />
